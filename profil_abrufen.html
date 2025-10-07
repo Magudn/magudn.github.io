@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Profil Abrufen</title>
+  <script src="jspsych-7.1.2/dist/jspsych.js"></script>
+  <script src="jspsych-7.1.2/dist/plugin-html-button-response.js"></script>
+  <script src="jspsych-7.1.2/dist/plugin-html-keyboard-response.js"></script>
+  <script src="jspsych-7.1.2/dist/plugin-survey-text.js"></script>
+  <link href="jspsych-7.1.2/dist/jspsych.css" rel="stylesheet" />
+  <!-- Cropper.js CSS -->
+  <link  href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+  <!-- Cropper.js JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+  <style>
+    body { background-color: white; color: black; font-size: 22px; }
+    #input-0 { font-size: 18px; }
+  </style>
+</head>
+<body></body>
+
+<script>
+// --- Load IDs first ---
+let validIDs = [];
+
+fetch('ids.json')
+  .then(response => response.json())
+  .then(data => {
+    validIDs = data;
+    startExperiment();
+  })
+  .catch(err => {
+    alert("Konnte die ID-Datenbank nicht laden.");
+    console.error(err);
+  });
+
+function startExperiment() {
+  const jsPsych = initJsPsych();
+
+function saveData(filename, filedata){
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', 'write_data.php'); 
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            if(xhr.status === 200){
+                console.log(xhr.responseText);
+            } else {
+                console.error("Error saving data:", xhr.responseText);
+            }
+        }
+    };
+    xhr.send(JSON.stringify({filename: filename, filedata: filedata}));
+}
+
+  // --- ID input ---
+  const id_input = {
+    type: jsPsychSurveyText,
+    questions: [{prompt: "Bitte gib deine Teilnehmer-ID ein (5 Zeichen):", rows: 1, columns: 15, required: true, name: "participant_id"}],
+    button_label: "Weiter",
+    on_finish: function(data) {
+      const id = jsPsych.data.getLastTrialData().trials[0].response.participant_id.trim();
+      if(!/^[A-Za-z0-9]{5}$/.test(id)) {
+        alert("ID muss genau 5 Zeichen haben.");
+        data.valid_id = false;
+      } else if (!validIDs.includes(id)) {
+        alert("ID nicht gefunden.");
+        data.valid_id = false;
+      } else {
+        data.valid_id = true;
+        jsPsych.data.addProperties({participant_id: id});
+      }
+    }
+  };
+
+  const id_timeline = {
+    timeline: [id_input],
+    loop_function: function(data) { return !data.values()[0].valid_id; }
+  };
+
+  // Question Strings 
+
+  const q1_string = "1. Wenn wir deine Freunde und Familie fragen würden, was deine<br> besten Eigenschaften sind, was würden sie wahrscheinlich sagen?"
+  const q2_string = "2. Und was würden sie sagen, dass deine schlechtesten Eigenschaften sind?"
+  const q3_string = "3. Wovor hast du am meisten Angst?"
+  const q4_string = "4. Meine liebsten Dinge im Leben sind:"
+  const q5_string = "5. Ich kann überhaupt nicht Menschen leiden, die...:"
+
+  // --- 5-question profile survey ---
+  const profile_questions = {
+  type: jsPsychSurveyText,
+  
+  questions: [
+    {prompt: q1_string, rows: 2, columns: 50, required: true, name: "q1"},
+    {prompt: q2_string, rows: 2, columns: 50, required: true, name: "q2"},
+    {prompt: q3_string, rows: 2, columns: 50, required: true, name: "q3"},
+    {prompt: q4_string, rows: 2, columns: 50, required: true, name: "q4"},
+    {prompt: q5_string, rows: 2, columns: 50, required: true, name: "q5"}
+  ],
+  button_label: "Weiter",
+  
+  on_finish: function(data){
+    const responses = data.response;
+    const id = jsPsych.data.get().last(2).values()[0].participant_id;  // ID added earlier
+
+    // Convert to CSV row
+    const header = ["ID","Q1","Q2","Q3","Q4","Q5"];
+    const row = [
+      id,
+      `"${responses.q1}"`,
+      `"${responses.q2}"`,
+      `"${responses.q3}"`,
+      `"${responses.q4}"`,
+      `"${responses.q5}"`
+    ].join(",");
+  
+    // Send to backend
+    saveData(id + ".csv", header.join(",") + "\n" + row);
+  }
+};
+
+let currentSurveyData = {}; // global variable to store CSV data
+let currentImagePath = "";  // global variable to store image path
+let restartExperiment = false; // global flag
+
+const profile_preview = {
+  type: jsPsychHtmlButtonResponse,
+  stimulus: function() {
+    const id = jsPsych.data.get().last(1).values()[0].participant_id || "Unbekannt";
+    return `
+    <div style="
+                flex:0 0 45%; 
+                background-color: #f5f5f5;
+                padding: 30px;
+                border-radius: 15px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                text-align:left;
+              ">
+      <div style="text-align:center;">
+        <img src="${currentImagePath}?t=${Date.now()}" style="max-width:200px; border-radius:50%;"><br>
+      </div>
+      <div style="text-align: left; max-width: 600px; margin: 0 auto;">
+        <p><b>${q1_string}</b><br>${currentSurveyData.Q1}</p>
+        <p><b>${q2_string}</b><br>${currentSurveyData.Q2}</p>
+        <p><b>${q3_string}</b><br>${currentSurveyData.Q3}</p>
+        <p><b>${q4_string}</b><br>${currentSurveyData.Q4}</p>
+        <p><b>${q5_string}</b><br>${currentSurveyData.Q5}</p>
+      </div>
+      </div>
+    `;
+  },
+  choices: ["Zurück zur ID Eingabe", "Fenster schließen"],
+  on_finish: function(data) {
+    // 0 = "Zurück zur ID Eingabe"
+    // 1 = "Fenster schließen"
+    if (data.response === 0) {
+      restartExperiment = true;
+    } else if (data.response === 1) {
+      window.close(); // try to close tab
+      // fallback for browsers that block window.close():
+      document.body.innerHTML = "<h2>Das Fenster kann jetzt geschlossen werden.</h2>";
+    }
+  }
+};
+
+  function parseCSVLine(line) {
+    const regex = /(?:\"([^\"]*)\")|([^,]+)/g;
+    const result = [];
+    let match;
+    while ((match = regex.exec(line)) !== null) {
+        result.push(match[1] !== undefined ? match[1] : match[2]);
+    }
+    return result;
+}
+
+function loadCSVData(id) {
+    const filePath = `db/${id}.csv`;
+
+    return fetch(filePath)
+        .then(response => {
+            if (!response.ok) throw new Error("CSV file not found");
+            return response.text();
+        })
+        .then(csvText => {
+            const rows = csvText.trim().split("\n");
+            const headers = parseCSVLine(rows[0]);
+            const values = parseCSVLine(rows[1]);
+
+            const data = {};
+            headers.forEach((header, i) => {
+                data[header] = values[i];
+            });
+
+            return data;
+        });
+}
+
+async function findExistingImage(id) {
+  const extensions = ['png', 'jpg', 'jpeg', 'bmp', 'webp'];
+  for (const ext of extensions) {
+    const path = `profile_pics/${id}.${ext}`;
+    try {
+      const res = await fetch(path, { method: 'HEAD' });
+      if (res.ok) {
+        return path;
+      }
+    } catch (e) {
+      // ignore failed fetch
+    }
+  }
+  return "profile_pics/default.png"; // fallback
+}
+
+const load_csv_trial = {
+  type: jsPsychHtmlKeyboardResponse,
+  stimulus: "Bitte warten, während deine Profildaten geladen werden...",
+  choices: "NO_KEYS",
+  trial_duration: null,
+  on_start: async function(trial) {
+    const id = jsPsych.data.get().last(1).values()[0].participant_id;
+    try {
+      currentSurveyData = await loadCSVData(id);
+      currentImagePath = await findExistingImage(id);
+    } catch(err) {
+      console.error(err);
+      currentSurveyData = {
+        Q1:"Fehler", Q2:"Fehler", Q3:"Fehler", Q4:"Fehler", Q5:"Fehler"
+      };
+      currentImagePath = "profile_pics/default.png";
+    }
+    jsPsych.finishTrial(); // move to next trial after loading
+  }
+};
+
+  const main_timeline = {
+  timeline: [id_timeline, load_csv_trial, profile_preview],
+  loop_function: function() {
+    if (restartExperiment) {
+      restartExperiment = false; // reset flag
+      return true; // go back to start
+    }
+    return false; // end experiment
+  }
+};
+
+jsPsych.run([main_timeline]);
+
+}
+</script>
+</html>

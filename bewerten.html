@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Profil Bewerten</title>
+  <script src="jspsych-7.1.2/dist/jspsych.js"></script>
+  <script src="jspsych-7.1.2/dist/plugin-html-button-response.js"></script>
+  <script src="jspsych-7.1.2/dist/plugin-html-keyboard-response.js"></script>
+  <script src="jspsych-7.1.2/dist/plugin-survey-text.js"></script>
+  <link href="jspsych-7.1.2/dist/jspsych.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+  <style>
+    body { font-size: 22px; background-color: white; color: black; }
+
+    .eval-img {
+      width: 100px;
+      cursor: pointer;
+      margin: 0 20px;
+      transition: transform 0.2s ease, filter 0.2s ease, opacity 0.2s ease;
+    }
+
+    .eval-img:hover {
+      transform: scale(1.1);
+    }
+
+    .eval-disabled {
+      cursor: default;
+      opacity: 0.5;
+      transform: scale(0.9);
+      pointer-events: none;
+    }
+
+    .eval-selected {
+      transform: scale(1.2);
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body></body>
+
+<script>
+const jsPsych = initJsPsych();
+let currentSurveyData = {};
+let currentImagePath = "";
+let validIDs = [];
+let selectedIDs = [];
+
+// --- Load IDs first ---
+fetch('ids.json')
+  .then(response => response.json())
+  .then(data => {
+    validIDs = data;
+    pickRandomIDs(5);
+    startExperiment();
+  })
+  .catch(err => {
+    alert("Konnte die ID-Datenbank nicht laden.");
+    console.error(err);
+  });
+
+// --- Pick n unique random IDs ---
+function pickRandomIDs(n) {
+  const shuffled = [...validIDs].sort(() => 0.5 - Math.random());
+  selectedIDs = shuffled.slice(0, n);
+}
+
+// --- CSV parsing ---
+function parseCSVLine(line) {
+  const regex = /(?:\"([^\"]*)\")|([^,]+)/g;
+  const result = [];
+  let match;
+  while ((match = regex.exec(line)) !== null) {
+      result.push(match[1] !== undefined ? match[1] : match[2]);
+  }
+  return result;
+}
+
+function loadCSVData(id) {
+  const filePath = `db/${id}.csv`;
+  return fetch(filePath)
+      .then(response => {
+          if (!response.ok) throw new Error("CSV file not found");
+          return response.text();
+      })
+      .then(csvText => {
+          const rows = csvText.trim().split("\n");
+          const headers = parseCSVLine(rows[0]);
+          const values = parseCSVLine(rows[1]);
+          const data = {};
+          headers.forEach((header, i) => { data[header] = values[i]; });
+          return data;
+      });
+}
+
+// --- Image finder ---
+async function findExistingImage(id) {
+  const extensions = ['png', 'jpg', 'jpeg', 'bmp', 'webp'];
+  for (const ext of extensions) {
+    const path = `profile_pics/${id}.${ext}`;
+    try {
+      const res = await fetch(path, { method: 'HEAD' });
+      if (res.ok) return path;
+    } catch (e) {}
+  }
+  return "profile_pics/default.png";
+}
+
+// --- Question strings ---
+const q1_string = "1. Wenn wir deine Freunde und Familie fragen würden, was deine besten Eigenschaften sind, was würden sie wahrscheinlich sagen?";
+const q2_string = "2. Und was würden sie sagen, dass deine schlechtesten Eigenschaften sind?";
+const q3_string = "3. Wovor hast du am meisten Angst?";
+const q4_string = "4. Meine liebsten Dinge im Leben sind:";
+const q5_string = "5. Ich kann überhaupt nicht Menschen leiden, die...:";
+
+function startExperiment() {
+
+  const instructions = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+      <h2>Willkommen!</h2>
+      <p>In diesem Experiment werden wir dir mehrere Profile anzeigen.</p>
+      <p>Bitte bewerte jedes Profil mit Like oder Dislike.</p>
+    `,
+    choices: ["Weiter"]
+  };
+
+  const profileTimeline = selectedIDs.map(id => {
+    const loadCSVTrial = {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: "Bitte warten, während die Profildaten geladen werden...",
+      choices: "NO_KEYS",
+      trial_duration: null,
+      on_start: async function(trial) {
+        try {
+          currentSurveyData = await loadCSVData(id);
+          currentImagePath = await findExistingImage(id);
+        } catch(err) {
+          console.error(err);
+          currentSurveyData = { Q1:"Fehler", Q2:"Fehler", Q3:"Fehler", Q4:"Fehler", Q5:"Fehler" };
+          currentImagePath = "profile_pics/default.png";
+        }
+        jsPsych.finishTrial();
+      }
+    };
+
+    const profileTrial = {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: function() {
+        return `
+          <div style="display:flex; justify-content:center; align-items:center; height:80vh; margin-top:20px;">
+
+            <!-- Left panel -->
+            <div style="
+                flex:0 0 45%; 
+                background-color: #f5f5f5;
+                padding: 30px;
+                border-radius: 15px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                text-align:left;
+              ">
+              <div style="text-align:center; margin-bottom:20px;">
+                <img src="${currentImagePath}?t=${Date.now()}" style="max-width:175px; border-radius:50%; border: 2px solid #ccc;">
+              </div>
+              <p><b>${q1_string}</b><br>${currentSurveyData.Q1}</p>
+              <p><b>${q2_string}</b><br>${currentSurveyData.Q2}</p>
+              <p><b>${q3_string}</b><br>${currentSurveyData.Q3}</p>
+              <p><b>${q4_string}</b><br>${currentSurveyData.Q4}</p>
+              <p><b>${q5_string}</b><br>${currentSurveyData.Q5}</p>
+            </div>
+
+            <!-- Right column -->
+            <div style="flex:0 0 20%; display:flex; flex-direction:column; justify-content:center; align-items:center; margin-left:60px;">
+              <img src="dep_img/like.bmp" id="like-btn" class="eval-img" style="margin-bottom:30px;">
+              <img src="dep_img/dislike.bmp" id="dislike-btn" class="eval-img">
+            </div>
+
+          </div>
+        `;
+      },
+      choices: [],
+      trial_duration: null,
+      response_ends_trial: false,
+      on_start: function(trial) {
+        setTimeout(() => {
+          const likeBtn = document.getElementById("like-btn");
+          const dislikeBtn = document.getElementById("dislike-btn");
+
+          likeBtn.addEventListener("click", () => {
+            likeBtn.classList.add("eval-selected");
+            dislikeBtn.classList.add("eval-disabled");
+
+            jsPsych.data.addProperties({ evaluation: "Like", profileID: id });
+
+            // Example: place for particle effects
+            // confetti({ particleCount: 50, spread: 60, origin: { y: 0.5 } });
+
+            setTimeout(() => jsPsych.finishTrial(), 3000);
+          });
+
+          dislikeBtn.addEventListener("click", () => {
+            dislikeBtn.classList.add("eval-selected");
+            likeBtn.classList.add("eval-disabled");
+
+            jsPsych.data.addProperties({ evaluation: "Dislike", profileID: id });
+
+            // Example: place for particle effects
+            // confetti({ particleCount: 50, spread: 60, origin: { y: 0.5 } });
+
+            setTimeout(() => jsPsych.finishTrial(), 3000);
+          });
+
+        }, 50);
+      }
+    };
+
+    return [loadCSVTrial, profileTrial];
+  }).flat();
+
+  const test_trial = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: "<h2>Test trial: Alles funktioniert!</h2><p>Dies ist eine kleine Testnachricht nach allen Profilen.</p>",
+    choices: ["Weiter"]
+  };
+
+  jsPsych.run([instructions, ...profileTimeline, test_trial]);
+}
+</script>
+</html>
+

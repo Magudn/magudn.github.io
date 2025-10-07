@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Profil Erstellen</title>
+  <script src="jspsych-7.1.2/dist/jspsych.js"></script>
+  <script src="jspsych-7.1.2/dist/plugin-html-button-response.js"></script>
+  <script src="jspsych-7.1.2/dist/plugin-html-keyboard-response.js"></script>
+  <script src="jspsych-7.1.2/dist/plugin-survey-text.js"></script>
+  <link href="jspsych-7.1.2/dist/jspsych.css" rel="stylesheet" />
+  <!-- Cropper.js CSS -->
+  <link  href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+  <!-- Cropper.js JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+  <style>
+    body { background-color: white; color: black; font-size: 22px; }
+    #input-0 { font-size: 18px; }
+  </style>
+</head>
+<body></body>
+
+<script>
+// --- Load IDs first ---
+let validIDs = [];
+let redoProfilePic = false;
+let currentImagePath = "";   // global image path (determined before preview)
+
+fetch('ids.json')
+  .then(response => response.json())
+  .then(data => {
+    validIDs = data;
+    startExperiment();
+  })
+  .catch(err => {
+    alert("Konnte die ID-Datenbank nicht laden.");
+    console.error(err);
+  });
+
+function startExperiment() {
+  const jsPsych = initJsPsych();
+
+  function saveData(filename, filedata){
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', 'write_data.php'); 
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === 4) {
+        if(xhr.status === 200){
+          console.log(xhr.responseText);
+        } else {
+          console.error("Error saving data:", xhr.responseText);
+        }
+      }
+    };
+    xhr.send(JSON.stringify({filename: filename, filedata: filedata}));
+  }
+
+  // --- ID input ---
+  const id_input = {
+    type: jsPsychSurveyText,
+    questions: [{prompt: "Bitte gib deine Teilnehmer-ID ein (5 Zeichen):", rows: 1, columns: 15, required: true, name: "participant_id"}],
+    button_label: "Weiter",
+    on_finish: function(data) {
+      const id = jsPsych.data.getLastTrialData().trials[0].response.participant_id.trim();
+      if(!/^[A-Za-z0-9]{5}$/.test(id)) {
+        alert("ID muss genau 5 Zeichen haben.");
+        data.valid_id = false;
+      } else if (!validIDs.includes(id)) {
+        alert("ID nicht gefunden.");
+        data.valid_id = false;
+      } else {
+        data.valid_id = true;
+        jsPsych.data.addProperties({participant_id: id});
+      }
+    }
+  };
+
+  const id_timeline = {
+    timeline: [id_input],
+    loop_function: function(data) { return !data.values()[0].valid_id; }
+  };
+
+  // --- Welcome page ---
+  const welcome = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: "<h2>Willkommen!</h2><p>Klicke 'Weiter', um zu starten.</p>",
+    choices: ["Weiter"]
+  };
+
+  // --- Profile picture upload & crop trial ---
+  const profile_pic_trial = {
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: `
+      <p>[Profilbild Instruktionen]:</p>
+      <input type="file" id="profilePicInput" accept="image/*">
+      <br><br>
+      <img id="profilePicImage" style="max-width: 300px; max-height: 300px; display:none;">
+      <br>
+      <button id="confirmBtn" disabled>Weiter</button>
+    `,
+    choices: [], // no keyboard input
+    on_load: function(){
+      let cropper;
+      const fileInput = document.getElementById('profilePicInput');
+      const imageEl = document.getElementById('profilePicImage');
+      const confirmBtn = document.getElementById('confirmBtn');
+
+      fileInput.addEventListener('change', function(){
+        const file = fileInput.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e){
+          imageEl.src = e.target.result;
+          imageEl.style.display = 'block';
+
+          // Destroy previous cropper if exists
+          if (cropper) cropper.destroy();
+
+          // Initialize Cropper.js
+          cropper = new Cropper(imageEl, {
+            aspectRatio: 1,      // square crop
+            viewMode: 1,
+            movable: true,
+            zoomable: true,
+            rotatable: false,
+            scalable: false,
+          });
+
+          confirmBtn.disabled = false; // enable button
+        };
+        reader.readAsDataURL(file);
+      });
+
+      confirmBtn.addEventListener('click', function(){
+        if (!cropper) return;
+        const croppedCanvas = cropper.getCroppedCanvas({ width: 200, height: 200 });
+        const croppedDataUrl = croppedCanvas.toDataURL('image/png');
+
+        // Send to backend
+        const id = jsPsych.data.get().last(1).values()[0].participant_id; // optional: use participant ID
+        fetch('upload_profile_pic.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ participant_id: id, image: croppedDataUrl })
+        }).then(res => res.text())
+          .then(response => console.log(response))
+          .catch(err => console.error(err));
+
+        // Finish trial (uploaded flag)
+        jsPsych.finishTrial({ uploaded: true });
+      });
+    }
+  };
+
+  // Question Strings 
+  const q1_string = "1. Wenn wir deine Freunde und Familie fragen würden, was deine<br> besten Eigenschaften sind, was würden sie wahrscheinlich sagen?"
+  const q2_string = "2. Und was würden sie sagen, dass deine schlechtesten Eigenschaften sind?"
+  const q3_string = "3. Wovor hast du am meisten Angst?"
+  const q4_string = "4. Meine liebsten Dinge im Leben sind:"
+  const q5_string = "5. Ich kann überhaupt nicht Menschen leiden, die...:"
+
+  // --- Profile instructions ---
+  const profile_instruction = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+      <p>[INSTRUKTIONEN].</p>
+    `,
+    choices: ["Weiter"]
+  };
+
+  // --- 5-question profile survey ---
+  const profile_questions = {
+    type: jsPsychSurveyText,
+    questions: [
+      {prompt: q1_string, rows: 2, columns: 50, required: true, name: "q1"},
+      {prompt: q2_string, rows: 2, columns: 50, required: true, name: "q2"},
+      {prompt: q3_string, rows: 2, columns: 50, required: true, name: "q3"},
+      {prompt: q4_string, rows: 2, columns: 50, required: true, name: "q4"},
+      {prompt: q5_string, rows: 2, columns: 50, required: true, name: "q5"}
+    ],
+    button_label: "Weiter",
+    on_finish: function(data){
+      const responses = data.response;
+      const id = jsPsych.data.get().last(2).values()[0].participant_id;  // ID added earlier
+
+      // Convert to CSV row
+      const header = ["ID","Q1","Q2","Q3","Q4","Q5"];
+      const row = [
+        id,
+        `"${responses.q1}"`,
+        `"${responses.q2}"`,
+        `"${responses.q3}"`,
+        `"${responses.q4}"`,
+        `"${responses.q5}"`
+      ].join(",");
+
+      // Send to backend
+      saveData(id + ".csv", header.join(",") + "\n" + row);
+    }
+  };
+
+  // --- Image finder function (checks extensions on server) ---
+  async function findExistingImage(id) {
+    const extensions = ['png', 'jpg', 'jpeg', 'bmp', 'webp'];
+    for (const ext of extensions) {
+      const path = `profile_pics/${id}.${ext}`;
+      try {
+        // HEAD is lighter than GET
+        const res = await fetch(path, { method: 'HEAD' });
+        if (res.ok) return path;
+      } catch (e) {
+        // ignore
+      }
+    }
+    return "profile_pics/default.png"; // fallback
+  }
+
+  // --- Trial that finds the correct image path BEFORE the preview ---
+  const find_image_trial = {
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: "Bitte warten, während das Profilbild überprüft wird...",
+    choices: "NO_KEYS",
+    trial_duration: null,
+    on_start: async function(trial) {
+      const id = jsPsych.data.get().last(1).values()[0].participant_id;
+      try {
+        currentImagePath = await findExistingImage(id);
+      } catch (err) {
+        console.error("Fehler beim Prüfen des Bildes:", err);
+        currentImagePath = "profile_pics/default.png";
+      }
+      jsPsych.finishTrial();
+    }
+  };
+
+  const end = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: "<h2>Vielen Dank für deine Teilnahme!</h2><p>Klicke 'Beenden', um dein Profil abzuschließen.</p>",
+    choices: ["Beenden"],
+    on_finish: function() {
+      window.close();
+    }
+  };
+
+  // --- Profile preview (uses currentImagePath set in find_image_trial) ---
+  const profile_preview = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: function() {
+      const id = jsPsych.data.get().last(1).values()[0].participant_id || "Unbekannt";
+      const survey_data = jsPsych.data.get().filter({trial_type: 'survey-text'}).last(1).values()[0].response;
+
+      const img_html = `<img src="${currentImagePath}?t=${Date.now()}" 
+                            style="max-width:200px; max-height:200px; border-radius:50%;"><br>`;
+
+      return `
+      <div style="
+                flex:0 0 45%; 
+                background-color: #f5f5f5;
+                padding: 30px;
+                border-radius: 15px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                text-align:left;
+              ">
+        <div style="text-align:center; margin-bottom:20px;">
+          ${img_html}
+        </div>
+        <div style="text-align: left; max-width: 600px; margin: 0 auto;">
+          <p><b>${q1_string}</b> <br>${survey_data.q1}</p>
+          <p><b>${q2_string}</b> <br>${survey_data.q2}</p>
+          <p><b>${q3_string}</b> <br>${survey_data.q3}</p>
+          <p><b>${q4_string}</b> <br>${survey_data.q4}</p>
+          <p><b>${q5_string}</b> <br>${survey_data.q5}</p>
+        </div>
+        </div>
+      `;
+    },
+    choices: ["Profil akzeptieren", "Profil bearbeiten"],
+    on_finish: function(data) {
+      if (data.response === 1) {
+        // Participant chose to edit → go back to profile_pic_trial
+        redoProfilePic = true;
+      } else {
+        redoProfilePic = false; // accepted
+      }
+    }
+  };
+
+  // Loop: upload image, fill questions, find image path, preview -> optionally repeat
+  const profile_loop = {
+    timeline: [profile_pic_trial, profile_questions, find_image_trial, profile_preview],
+    loop_function: function() {
+      return redoProfilePic; // true → repeat the loop
+    }
+  };
+
+  // --- Timeline ---
+  var timeline = [];
+  timeline.push(id_timeline);
+  timeline.push(welcome);
+  timeline.push(profile_instruction);
+  timeline.push(profile_loop); // loop for editing profile
+  timeline.push(end);
+
+  // --- Start experiment ---
+  jsPsych.run(timeline);
+}
+</script>
+</html>
