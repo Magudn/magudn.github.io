@@ -12,6 +12,8 @@
   <link  href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
   <!-- Cropper.js JS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+
   <style>
     body { background-color: white; color: black; font-size: 22px; }
     #input-0 { font-size: 18px; }
@@ -55,49 +57,226 @@ function startExperiment() {
     xhr.send(JSON.stringify({filename: filename, filedata: filedata}));
   }
 
-  // --- ID input ---
-  const id_input = {
-    type: jsPsychSurveyText,
-    questions: [{prompt: "Bitte gib deine Teilnehmer-ID ein (5 Zeichen):", rows: 1, columns: 15, required: true, name: "participant_id"}],
-    button_label: "Weiter",
-    on_finish: function(data) {
-      const id = jsPsych.data.getLastTrialData().trials[0].response.participant_id.trim();
-      if(!/^[A-Za-z0-9]{5}$/.test(id)) {
-        alert("ID muss genau 5 Zeichen haben.");
-        data.valid_id = false;
-      } else if (!validIDs.includes(id)) {
-        alert("ID nicht gefunden.");
-        data.valid_id = false;
-      } else {
-        data.valid_id = true;
-        jsPsych.data.addProperties({participant_id: id});
-      }
+// --- CSS for panel + logo ---
+const style = document.createElement('style');
+style.innerHTML = `
+  /* Base layout */
+  .jspsych-content-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background-color: #fafafa;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: #262626;
+  }
+
+  /* Logo styling */
+  .top-logo {
+    margin-top: 30px;
+    margin-bottom: 20px;
+    max-width: 150px;
+    height: auto;
+    opacity: 0.9;
+  }
+
+  /* Panel (card) styling */
+  .id-panel {
+    background-color: #ffffff;
+    border-radius: 12px;
+    padding: 40px 50px;
+    display: inline-block;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    text-align: center;
+    border: 1px solid #dbdbdb;
+    width: 100%;
+    max-width: 500px;
+  }
+
+  .id-panel input {
+    margin-top: 15px;
+    padding: 10px 12px;
+    width: 100%;
+    font-size: 16px;
+    border: 1px solid #dbdbdb;
+    border-radius: 6px;
+    box-sizing: border-box;
+    background-color: #fafafa;
+  }
+
+  .id-panel input:focus {
+    border-color: #a0a0a0;
+    outline: none;
+    background-color: #fff;
+  }
+
+  /* Buttons */
+  .id-panel button,
+  .jspsych-btn {
+    background: linear-gradient(45deg, #f58529, #dd2a7b, #8134af, #515bd4);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 25px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 600;
+  }
+
+  .id-panel button:hover,
+  .jspsych-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+
+  .id-panel button:active,
+  .jspsych-btn:active {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  /* Footnote */
+  .footnote {
+    margin-top: 20px;
+    font-size: 12px;
+    color: #8e8e8e;
+    text-align: center;
+    max-width: 400px;
+  }
+
+  /* Fade animation */
+  .fade-container {
+    opacity: 0;
+    transition: opacity 1s ease;
+  }
+  .fade-container.visible {
+    opacity: 1;
+  }
+`;
+document.head.appendChild(style);
+
+
+// --- Add logo to the page ---
+const logo = document.createElement('img');
+logo.src = 'ZI_Logo.jpg';  // make sure this file is in the same folder as your HTML
+logo.className = 'top-logo';
+document.body.prepend(logo);  // adds logo at the top of body
+
+// --- ID input ---
+const id_input = {
+  type: jsPsychSurveyText,
+  questions: [{ 
+    prompt: "Bitte gib deine Teilnehmer-ID ein (5 Zeichen):", 
+    rows: 1, 
+    columns: 15, 
+    required: true, 
+    name: "participant_id" 
+  }],
+  button_label: "Weiter",
+  css_classes: ['id-panel'],
+  on_start: function() {
+    const wrapper = document.querySelector('.jspsych-content-wrapper');
+
+    // Add logo if not already added
+    if (!wrapper.querySelector('.top-logo')) {
+      const logo = document.createElement('img');
+      logo.src = 'ZI_Logo.jpg';  // must be in same folder
+      logo.className = 'top-logo';
+      wrapper.prepend(logo);
     }
-  };
+
+    // Add footnote if not already added
+    if (!wrapper.querySelector('.footnote')) {
+      const footnote = document.createElement('div');
+      footnote.className = 'footnote';
+      footnote.innerText = '© 2025 ZI Mannheim – Alle Rechte vorbehalten';
+      wrapper.appendChild(footnote);
+    }
+  },
+  on_finish: function(data) {
+    const id = jsPsych.data.getLastTrialData().trials[0].response.participant_id.trim();
+    if(!/^[A-Za-z0-9]{5}$/.test(id)) {
+      alert("ID muss genau 5 Zeichen haben.");
+      data.valid_id = false;
+    } else if (!validIDs.includes(id)) {
+      alert("ID nicht gefunden.");
+      data.valid_id = false;
+    } else {
+      data.valid_id = true;
+      jsPsych.data.addProperties({participant_id: id});
+    }
+  }
+};
+
 
   const id_timeline = {
     timeline: [id_input],
     loop_function: function(data) { return !data.values()[0].valid_id; }
   };
 
-  // --- Welcome page ---
   const welcome = {
+  type: jsPsychHtmlButtonResponse,
+  stimulus: `<div class="fade-container"> 
+               <h2>Willkommen!</h2>
+               <p>Im folgenden wirst du dein Profil erstellen.</p> 
+               <p>Dein Profil wird aus einem Profilbild und fünf Informationen bestehen.</p>
+             </div>`,
+  choices: ["Weiter"],
+  css_classes: ['id-panel'],
+  on_start: function(trial) {
+    // fade in after content is added to DOM
+    setTimeout(() => {
+      const container = document.querySelector('.fade-container');
+      if(container) container.classList.add('visible');
+    }, 10);
+  },
+  on_finish: function() {
+    // fade out before next trial
+    const container = document.querySelector('.fade-container');
+    if(container) container.classList.remove('visible');
+  }
+};
+
+  const question_instructions = {
     type: jsPsychHtmlButtonResponse,
-    stimulus: "<h2>Willkommen!</h2><p>Klicke 'Weiter', um zu starten.</p>",
-    choices: ["Weiter"]
+    stimulus: `
+              <div class="fade-container">
+              <p>Nun werden wir dir einige Fragen stellen. Bitte beantworte die Fragen in 2-3 kurzen Sätzen.</p> 
+              <p>Deine Antworten werden <b>Teil deines Profils sein.</b></p>
+              </div>
+              `,
+    choices: ["Weiter"],
+    css_classes: ['id-panel'],
+    on_start: function(trial) {
+    // fade in after content is added to DOM
+    setTimeout(() => {
+      const container = document.querySelector('.fade-container');
+      if(container) container.classList.add('visible');
+    }, 10);
+  },
+  on_finish: function() {
+    // fade out before next trial
+    const container = document.querySelector('.fade-container');
+    if(container) container.classList.remove('visible');
+  }
   };
 
   // --- Profile picture upload & crop trial ---
   const profile_pic_trial = {
     type: jsPsychHtmlKeyboardResponse,
     stimulus: `
-      <p>[Profilbild Instruktionen]:</p>
+      <div class="fade-container">
+      <p><b>Bitte wähle nun dein Profilbild aus:</b></p>
       <input type="file" id="profilePicInput" accept="image/*">
       <br><br>
       <img id="profilePicImage" style="max-width: 300px; max-height: 300px; display:none;">
       <br>
       <button id="confirmBtn" disabled>Weiter</button>
+      </div>
     `,
+    css_classes: ['id-panel'],
     choices: [], // no keyboard input
     on_load: function(){
       let cropper;
@@ -149,7 +328,19 @@ function startExperiment() {
         // Finish trial (uploaded flag)
         jsPsych.finishTrial({ uploaded: true });
       });
-    }
+    },
+    on_start: function(trial) {
+    // fade in after content is added to DOM
+    setTimeout(() => {
+      const container = document.querySelector('.fade-container');
+      if(container) container.classList.add('visible');
+    }, 10);
+  },
+  on_finish: function() {
+    // fade out before next trial
+    const container = document.querySelector('.fade-container');
+    if(container) container.classList.remove('visible');
+  }
   };
 
   // Question Strings 
@@ -159,45 +350,142 @@ function startExperiment() {
   const q4_string = "4. Meine liebsten Dinge im Leben sind:"
   const q5_string = "5. Ich kann überhaupt nicht Menschen leiden, die...:"
 
-  // --- Profile instructions ---
-  const profile_instruction = {
-    type: jsPsychHtmlButtonResponse,
-    stimulus: `
-      <p>[INSTRUKTIONEN].</p>
-    `,
-    choices: ["Weiter"]
-  };
+  // --- 5 separate profile question trials ---
+const q1_trial = {
+  type: jsPsychSurveyText,
+  questions: [
+    { prompt: `<div class="fade-container">${q1_string}</div>`, rows: 2, columns: 50, required: true, name: "q1" }
+  ],
+  button_label: "Weiter",
+  css_classes: ['id-panel'],
+  on_finish: function(data) {
+    jsPsych.data.addProperties({ q1: data.response.q1 });
+  },
+  on_start: function(trial) {
+    // fade in after content is added to DOM
+    setTimeout(() => {
+      const container = document.querySelector('.fade-container');
+      if(container) container.classList.add('visible');
+    }, 10);
+  },
+  on_finish: function() {
+    // fade out before next trial
+    const container = document.querySelector('.fade-container');
+    if(container) container.classList.remove('visible');
+  }
+};
 
-  // --- 5-question profile survey ---
-  const profile_questions = {
-    type: jsPsychSurveyText,
-    questions: [
-      {prompt: q1_string, rows: 2, columns: 50, required: true, name: "q1"},
-      {prompt: q2_string, rows: 2, columns: 50, required: true, name: "q2"},
-      {prompt: q3_string, rows: 2, columns: 50, required: true, name: "q3"},
-      {prompt: q4_string, rows: 2, columns: 50, required: true, name: "q4"},
-      {prompt: q5_string, rows: 2, columns: 50, required: true, name: "q5"}
-    ],
-    button_label: "Weiter",
-    on_finish: function(data){
-      const responses = data.response;
-      const id = jsPsych.data.get().last(2).values()[0].participant_id;  // ID added earlier
+const q2_trial = {
+  type: jsPsychSurveyText,
+  questions: [
+    { prompt: `<div class="fade-container">${q2_string}</div>`, rows: 2, columns: 50, required: true, name: "q2" }
+  ],
+  button_label: "Weiter",
+  css_classes: ['id-panel'],
+  on_finish: function(data) {
+    jsPsych.data.addProperties({ q2: data.response.q2 });
+  },
+  on_start: function(trial) {
+    // fade in after content is added to DOM
+    setTimeout(() => {
+      const container = document.querySelector('.fade-container');
+      if(container) container.classList.add('visible');
+    }, 10);
+  },
+  on_finish: function() {
+    // fade out before next trial
+    const container = document.querySelector('.fade-container');
+    if(container) container.classList.remove('visible');
+  }
+};
 
-      // Convert to CSV row
-      const header = ["ID","Q1","Q2","Q3","Q4","Q5"];
-      const row = [
-        id,
-        `"${responses.q1}"`,
-        `"${responses.q2}"`,
-        `"${responses.q3}"`,
-        `"${responses.q4}"`,
-        `"${responses.q5}"`
-      ].join(",");
+const q3_trial = {
+  type: jsPsychSurveyText,
+  questions: [
+    { prompt: `<div class="fade-container">${q3_string}</div>`, rows: 2, columns: 50, required: true, name: "q3" }
+  ],
+  button_label: "Weiter",
+  css_classes: ['id-panel'],
+  on_finish: function(data) {
+    jsPsych.data.addProperties({ q3: data.response.q3 });
+  },
+  on_start: function(trial) {
+    // fade in after content is added to DOM
+    setTimeout(() => {
+      const container = document.querySelector('.fade-container');
+      if(container) container.classList.add('visible');
+    }, 10);
+  },
+  on_finish: function() {
+    // fade out before next trial
+    const container = document.querySelector('.fade-container');
+    if(container) container.classList.remove('visible');
+  }
+};
 
-      // Send to backend
-      saveData(id + ".csv", header.join(",") + "\n" + row);
-    }
-  };
+const q4_trial = {
+  type: jsPsychSurveyText,
+  questions: [
+    {prompt: `<div class="fade-container">${q4_string}</div>`, rows: 2, columns: 50, required: true, name: "q4" }
+  ],
+  button_label: "Weiter",
+  css_classes: ['id-panel'],
+  on_finish: function(data) {
+    jsPsych.data.addProperties({ q4: data.response.q4 });
+  },
+  on_start: function(trial) {
+    // fade in after content is added to DOM
+    setTimeout(() => {
+      const container = document.querySelector('.fade-container');
+      if(container) container.classList.add('visible');
+    }, 10);
+  },
+  on_finish: function() {
+    // fade out before next trial
+    const container = document.querySelector('.fade-container');
+    if(container) container.classList.remove('visible');
+  }
+};
+
+const q5_trial = {
+  type: jsPsychSurveyText,
+  questions: [
+    { prompt: `<div class="fade-container">${q5_string}</div>`, rows: 2, columns: 50, required: true, name: "q5" }
+  ],
+  button_label: "Weiter",
+  css_classes: ['id-panel'],
+  on_finish: function(data) {
+    jsPsych.data.addProperties({ q5: data.response.q5 });
+
+    // Save all responses after last question
+    const id = jsPsych.data.get().filter({ trial_type: 'survey-text' }).values()[0].participant_id ||
+               jsPsych.data.get().first(1).values()[0].participant_id;
+
+    const stored = jsPsych.data.get().values()[0];
+    const header = ["ID", "Q1", "Q2", "Q3", "Q4", "Q5"];
+    const row = [
+      id,
+      `"${stored.q1 || ""}"`,
+      `"${stored.q2 || ""}"`,
+      `"${stored.q3 || ""}"`,
+      `"${stored.q4 || ""}"`,
+      `"${data.response.q5 || ""}"`
+    ].join(",");
+    saveData(id + ".csv", header.join(",") + "\n" + row);
+  },
+  on_finish: function() {
+    // fade out before next trial
+    const container = document.querySelector('.fade-container');
+    if(container) container.classList.remove('visible');
+    },
+  on_start: function(trial) {
+    // fade in after content is added to DOM
+    setTimeout(() => {
+      const container = document.querySelector('.fade-container');
+      if(container) container.classList.add('visible');
+    }, 10);
+  },
+};
 
   // --- Image finder function (checks extensions on server) ---
   async function findExistingImage(id) {
@@ -230,7 +518,7 @@ function startExperiment() {
         currentImagePath = "profile_pics/default.png";
       }
       jsPsych.finishTrial();
-    }
+    },
   };
 
   const end = {
@@ -239,65 +527,71 @@ function startExperiment() {
     choices: ["Beenden"],
     on_finish: function() {
       window.close();
-    }
+    },
   };
 
-  // --- Profile preview (uses currentImagePath set in find_image_trial) ---
   const profile_preview = {
-    type: jsPsychHtmlButtonResponse,
-    stimulus: function() {
-      const id = jsPsych.data.get().last(1).values()[0].participant_id || "Unbekannt";
-      const survey_data = jsPsych.data.get().filter({trial_type: 'survey-text'}).last(1).values()[0].response;
+  type: jsPsychHtmlButtonResponse,
+  css_classes: ['id-panel'],
+  stimulus: function() {
+    // Get participant ID
+    const id = jsPsych.data.get().first(1).values()[0].participant_id || "Unbekannt";
 
-      const img_html = `<img src="${currentImagePath}?t=${Date.now()}" 
-                            style="max-width:200px; max-height:200px; border-radius:50%;"><br>`;
+    const surveyData = jsPsych.data.get().filter({trial_type: 'survey-text'}).last(5).values();
+    const data = {
+      q1: surveyData[0].response.q1,
+      q2: surveyData[1].response.q2,
+      q3: surveyData[2].response.q3,
+      q4: surveyData[3].response.q4,
+      q5: surveyData[4].response.q5
+    };
 
-      return `
-      <div style="
-                flex:0 0 45%; 
-                background-color: #f5f5f5;
-                padding: 30px;
-                border-radius: 15px;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-                text-align:left;
-              ">
-        <div style="text-align:center; margin-bottom:20px;">
-          ${img_html}
+    // q1, q2, q3, q4, q5 were stored in on_finish of each trial
+
+    const img_html = `<img src="${currentImagePath}?t=${Date.now()}" 
+                          style="max-width:200px; max-height:200px; border-radius:50%;"><br>`;
+
+    return `
+        ${img_html}
         </div>
         <div style="text-align: left; max-width: 600px; margin: 0 auto;">
-          <p><b>${q1_string}</b> <br>${survey_data.q1}</p>
-          <p><b>${q2_string}</b> <br>${survey_data.q2}</p>
-          <p><b>${q3_string}</b> <br>${survey_data.q3}</p>
-          <p><b>${q4_string}</b> <br>${survey_data.q4}</p>
-          <p><b>${q5_string}</b> <br>${survey_data.q5}</p>
+          <p><b>${q1_string}</b> <br>${data.q1}</p>
+          <p><b>${q2_string}</b> <br>${data.q2}</p>
+          <p><b>${q3_string}</b> <br>${data.q3}</p>
+          <p><b>${q4_string}</b> <br>${data.q4}</p>
+          <p><b>${q5_string}</b> <br>${data.q5}</p>
         </div>
-        </div>
-      `;
-    },
-    choices: ["Profil akzeptieren", "Profil bearbeiten"],
-    on_finish: function(data) {
-      if (data.response === 1) {
-        // Participant chose to edit → go back to profile_pic_trial
-        redoProfilePic = true;
-      } else {
-        redoProfilePic = false; // accepted
-      }
-    }
-  };
+      </div>
+    `;
+  },
+  choices: ["Profil akzeptieren", "Profil bearbeiten"],
+  on_finish: function(data) {
+    redoProfilePic = data.response === 1; // true → repeat if edit
+  }
+};
 
-  // Loop: upload image, fill questions, find image path, preview -> optionally repeat
-  const profile_loop = {
-    timeline: [profile_pic_trial, profile_questions, find_image_trial, profile_preview],
-    loop_function: function() {
-      return redoProfilePic; // true → repeat the loop
-    }
-  };
+  // --- Updated profile loop ---
+const profile_loop = {
+  timeline: [
+    profile_pic_trial,
+    question_instructions,
+    q1_trial,
+    q2_trial,
+    q3_trial,
+    q4_trial,
+    q5_trial,
+    find_image_trial,
+    profile_preview
+  ],
+  loop_function: function() {
+    return redoProfilePic; // true → repeat if user wants to edit
+  }
+};
 
   // --- Timeline ---
   var timeline = [];
   timeline.push(id_timeline);
   timeline.push(welcome);
-  timeline.push(profile_instruction);
   timeline.push(profile_loop); // loop for editing profile
   timeline.push(end);
 
