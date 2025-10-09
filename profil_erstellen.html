@@ -8,6 +8,7 @@
   <script src="jspsych-7.1.2/dist/plugin-html-keyboard-response.js"></script>
   <script src="jspsych-7.1.2/dist/plugin-survey-text.js"></script>
   <link href="jspsych-7.1.2/dist/jspsych.css" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css">
   <!-- Cropper.js CSS -->
   <link  href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
   <!-- Cropper.js JS -->
@@ -18,6 +19,7 @@
   </style>
 </head>
 <body>
+  <script src="question_strings.js"></script>
 </body>
 <script>
 // --- Load IDs first ---
@@ -54,164 +56,6 @@ function startExperiment() {
     };
     xhr.send(JSON.stringify({filename: filename, filedata: filedata}));
   }
-
-  // --- CSS for panel + logo ---
-  const style = document.createElement('style');
-  style.innerHTML = `
-    /* Base layout */
-    .jspsych-content-wrapper {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;  /* Start from top instead of center */
-      min-height: 100vh;            /* Allow content to grow beyond viewport */
-      background-color: #fafafa;
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      color: #262626;
-      overflow-y: auto;              /* Enable scrolling when needed */
-      padding: 40px 0;              /* Give breathing room around content */
-      box-sizing: border-box;
-    }
-
-
-    /* Logo styling */
-    .top-logo {
-      position: absolute;   /* remove it from normal flow */
-      top: 50px;            /* distance from top of viewport */
-      left: 50px;           /* distance from left edge */
-      max-width: 150px;
-      height: auto;
-      opacity: 0.9;
-      z-index: 100;         /* ensure it stays above other elements */
-    }
-
-    /* Panel (card) styling */
-    .id-panel {
-      background-color: #ffffff;
-      border-radius: 12px;
-      padding: 20px 30px;
-      display: inline-block;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      text-align: center;
-      border: 1px solid #dbdbdb;
-      width: 100%;
-      max-width: 600px;
-    }
-
-    .id-panel input {
-      margin-top: 15px;
-      padding: 10px 12px;
-      width: 100%;
-      font-size: 16px;
-      border: 1px solid #dbdbdb;
-      border-radius: 6px;
-      box-sizing: border-box;
-      background-color: #fafafa;
-    }
-
-    .id-panel input:focus {
-      border-color: #a0a0a0;
-      outline: none;
-      background-color: #fff;
-    }
-
-    /* Buttons */
-    .id-panel button,
-    .jspsych-btn {
-      background: linear-gradient(45deg, #f58529, #dd2a7b, #8134af, #515bd4);
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      padding: 10px 25px;
-      font-size: 16px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      font-weight: 600;
-      max-width: 200px;
-    }
-
-    .id-panel button:hover,
-    .jspsych-btn:hover {
-      opacity: 0.9;
-      transform: translateY(-1px);
-    }
-
-    .id-panel button:active,
-    .jspsych-btn:active {
-      transform: translateY(0);
-      opacity: 1;
-    }
-
-    /* Footnote */
-    .footnote {
-      margin-top: 20px;
-      font-size: 12px;
-      color: #8e8e8e;
-      text-align: center;
-      max-width: 400px;
-    }
-
-    /* Fade animation */
-    .fade-container {
-      opacity: 0;
-      transition: opacity 1s ease;
-    }
-    .fade-container.visible {
-      opacity: 1;
-    }
-
-    /* Profile style */
-    .profile {
-      background-color: #ffffff;
-      border-radius: 12px;
-      padding: 20px 20px;
-      display: inline-block;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      text-align: center;
-      border: 1px solid #dbdbdb;
-      width: 100%;
-      max-width: 950px;
-    }
-    
-    /* Container for the Q/A rows */
-    .qa-container {
-      text-align: left;
-      margin: 0 auto;
-      font-size: 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px; /* spacing between rows */
-      width: 100%;
-      max-width: 1300px;
-      margin-bottom: 20px;
-    }
-
-    /* Each question–answer pair */
-    .qa-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      border-bottom: 1px solid #eee;
-      padding: 4px 0;
-    }
-
-    /* Label (the question text) */
-    .qa-label {
-      font-weight: 600;
-      margin-right: 10px;
-      flex: 1;
-    }
-
-    /* Answer text */
-    .qa-answer {
-      flex: 1;
-      text-align: right;
-      color: #333;
-      font-weight: 400;
-    }
-
-  `;
-  document.head.appendChild(style);
 
   // --- Add logo to the page ---
   const logo = document.createElement('img');
@@ -397,13 +241,6 @@ function startExperiment() {
     }
     };
 
-  // Question Strings 
-  const q1_string = "1. Wenn wir deine Freunde und Familie fragen würden, was deine besten Eigenschaften sind, was würden sie wahrscheinlich sagen?"
-  const q2_string = "2. Und was würden sie sagen, dass deine schlechtesten Eigenschaften sind?"
-  const q3_string = "3. Wovor hast du am meisten Angst?"
-  const q4_string = "4. Meine liebsten Dinge im Leben sind:"
-  const q5_string = "5. Ich kann überhaupt nicht Menschen leiden, die...:"
-
   // --- 5 separate profile question trials ---
   const q1_trial = {
     type: jsPsychSurveyText,
@@ -577,7 +414,7 @@ function startExperiment() {
 
     const end = {
       type: jsPsychHtmlButtonResponse,
-      stimulus: "<h2>Vielen Dank für deine Teilnahme!</h2><p>Du kannst das Fenster nun schließen.</p>",
+      stimulus: "<h2>Vielen Dank für deine Teilnahme!</h2><p>Dein Profil wurde gespeichert. Du kannst das Fenster nun schließen.</p>",
       choices: ["Schließen"],
       on_finish: function() {
         window.close();
@@ -586,7 +423,7 @@ function startExperiment() {
 
     const profile_preview = {
   type: jsPsychHtmlButtonResponse,
-  css_classes: ['id-panel', 'profile'],
+  css_classes: ['id_panel', 'profile'],
   stimulus: function() {
     const id = jsPsych.data.get().first(1).values()[0].participant_id || "Unbekannt";
 
@@ -622,6 +459,10 @@ function startExperiment() {
     `;
   },
   choices: ["Profil akzeptieren", "Profil bearbeiten"],
+  button_html: [
+  `<button class="accept">%choice%</button>`,
+  `<button class="edit">%choice%</button>`
+  ],
   on_start: function(trial) {
     // fade in after content is added to DOM
     setTimeout(() => {
