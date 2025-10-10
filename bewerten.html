@@ -46,18 +46,24 @@
 const jsPsych = initJsPsych();
 let currentSurveyData = {};
 let currentImagePath = "";
+
+// used to log in
 let validIDs = [];
+
+// used to load profiles
+let valid_profile_ids = ["00001",
+  "00002",
+  "00003",
+  "00004",
+  "00005",]
+;
 let selectedIDs = [];
 
 // --- Load IDs first ---
 fetch('ids.json')
   .then(response => response.json())
   .then(data => {
-    validIDs = ["00001",
-  "00002",
-  "00003",
-  "00004",
-  "00005",];
+    validIDs = data;
     pickRandomIDs(5);
     startExperiment();
   })
@@ -68,7 +74,7 @@ fetch('ids.json')
 
 // --- Pick n unique random IDs ---
 function pickRandomIDs(n) {
-  const shuffled = [...validIDs].sort(() => 0.5 - Math.random());
+  const shuffled = [...valid_profile_ids].sort(() => 0.5 - Math.random());
   selectedIDs = shuffled.slice(0, n);
 }
 
@@ -120,15 +126,18 @@ function startExperiment() {
   logo.src = 'zi.png';  // make sure this file is in the same folder as your HTML
   logo.className = 'top-logo';
   document.body.prepend(logo);  // adds logo at the top of body
-
-  const instructions = {
-    type: jsPsychHtmlButtonResponse,
-    stimulus: `
-      <h2>Willkommen!</h2>
-      <p>In diesem Experiment werden wir dir mehrere Profile anzeigen.</p>
-      <p>Bitte bewerte jedes Profil mit Like oder Dislike.</p>
-    `,
-    choices: ["Weiter"],
+  
+  // --- ID input ---
+  const id_input = {
+    type: jsPsychSurveyText,
+    questions: [{ 
+      prompt: "Bitte gib deine Teilnehmer-ID ein (5 Zeichen):", 
+      rows: 1, 
+      columns: 15, 
+      required: true, 
+      name: "participant_id" 
+    }],
+    button_label: "Weiter",
     css_classes: ['id-panel'],
     on_start: function() {
       const wrapper = document.querySelector('.jspsych-content-wrapper');
@@ -139,8 +148,8 @@ function startExperiment() {
         logo.src = 'zi.png';  // must be in same folder
         logo.className = 'top-logo';
         wrapper.prepend(logo);
-      
       }
+
       // Add footnote if not already added
       if (!wrapper.querySelector('.footnote')) {
         const footnote = document.createElement('div');
@@ -148,9 +157,60 @@ function startExperiment() {
         footnote.innerText = '© 2025 ZI Mannheim – Alle Rechte vorbehalten';
         wrapper.appendChild(footnote);
       }
+    },
+    on_finish: function(data) {
+      const id = jsPsych.data.getLastTrialData().trials[0].response.participant_id.trim();
+      if(!/^[A-Za-z0-9]{5}$/.test(id)) {
+        alert("ID muss genau 5 Zeichen haben.");
+        data.valid_id = false;
+      } else if (!validIDs.includes(id)) {
+        alert("ID nicht gefunden.");
+        data.valid_id = false;
+      } else {
+        data.valid_id = true;
+        jsPsych.data.addProperties({participant_id: id});
+      }
     }
-
   };
+
+  const id_timeline = {
+    timeline: [id_input],
+    loop_function: function(data) { return !data.values()[0].valid_id; }
+  };
+
+  const instructions = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+      <div class="fade-container"> 
+      <h2>Willkommen!</h2>
+      <p>In diesem Experiment werden wir dir einige Profile zeigen, die von anderen Studienteilnehmern erstellt wurden.</p>
+      <p>Bitte schau dir jedes Profil sorgfältig an. Anschließend kannst du bewerten, ob dir das Profil <b>gefallen hat oder nicht.</b></p>
+      <p>Wenn dir das Profil gefällt, klicke hierfür einfach auf den <b>grünen Daumen, der nach oben zeigt</b>. Wenn dir das Profil nicht gefällt, klicke auf den <b>roten Daumen, der nach unten zeigt</b>.
+      </div>
+        `,
+    choices: ["Weiter"],
+    css_classes: ['id-panel'],
+    on_start: function(trial) {
+    // fade in after content is added to DOM
+    setTimeout(() => {
+      const container = document.querySelector('.fade-container');
+      if(container) container.classList.add('visible');
+    }, 10);
+    },
+    on_finish: function() {
+    // fade out before next trial
+    const container = document.querySelector('.fade-container');
+    if(container) container.classList.remove('visible');
+    }
+  };
+
+  let profil_bewertungen = {
+    bew1: "",
+    bew2: "",
+    bew3: "",
+    bew4: "",
+    bew5: "",
+  }
 
   const profileTimeline = selectedIDs.map(id => {
     const loadCSVTrial = {
@@ -175,9 +235,10 @@ function startExperiment() {
   type: jsPsychHtmlKeyboardResponse,
   stimulus: function() {
     return `
+      <div class="fade-container"> 
       <div style="display:flex; justify-content:center; align-items:flex-start; margin-top:20px; gap:40px;">
 
-        <!-- Left panel (styled like first block) -->
+        <!-- Left panel -->
         <div class="profile" style="max-width: 750px;">
           <img src="${currentImagePath}?t=${Date.now()}" 
                style="max-width:150px; max-height:150px; border-radius:50%; margin-bottom:20px;">
@@ -193,10 +254,12 @@ function startExperiment() {
 
         <!-- Right column -->
         <div style="display:flex; flex-direction:column; justify-content:center; align-items:center;">
-          <img src="dep_img/like.bmp" id="like-btn" class="eval-img" style="margin-bottom:30px;">
-          <img src="dep_img/dislike.bmp" id="dislike-btn" class="eval-img">
+          <div style="display:flex; flex-direction:column; justify-content:center; height: 100%;">
+            <img src="dep_img/like.png" id="like-btn" class="eval-img" style="margin-bottom:30px;">
+            <img src="dep_img/dislike.png" id="dislike-btn" class="eval-img">
+          </div>
         </div>
-
+      </div>
       </div>
     `;
   },
@@ -208,37 +271,90 @@ function startExperiment() {
       const likeBtn = document.getElementById("like-btn");
       const dislikeBtn = document.getElementById("dislike-btn");
 
+      // fade in after content is added to DOM
+      setTimeout(() => {
+        const container = document.querySelector('.fade-container');
+        if(container) container.classList.add('visible');
+      }, 10);
+
       likeBtn.addEventListener("click", () => {
-        likeBtn.classList.add("eval-selected");
-        dislikeBtn.classList.add("eval-disabled");
+    likeBtn.classList.add("eval-selected");
+    dislikeBtn.classList.add("eval-disabled");
 
-        jsPsych.data.addProperties({ evaluation: "Like", profileID: id });
-        setTimeout(() => jsPsych.finishTrial(), 3000);
-      });
+    const evalData = {
+        participant_id: jsPsych.data.get().values()[0].participant_id,
+        profileID: id,
+        evaluation: "Like"
+    };
 
-      dislikeBtn.addEventListener("click", () => {
-        dislikeBtn.classList.add("eval-selected");
-        likeBtn.classList.add("eval-disabled");
+    // Send evaluation to server
+    fetch('save_eval.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(evalData)
+    })
+    .then(res => res.text())
+    .then(console.log)
+    .catch(console.error);
 
-        jsPsych.data.addProperties({ evaluation: "Dislike", profileID: id });
-        setTimeout(() => jsPsych.finishTrial(), 3000);
-      });
+    jsPsych.data.addProperties(evalData);
+    setTimeout(() => jsPsych.finishTrial(), 2000);
+});
+
+dislikeBtn.addEventListener("click", () => {
+    dislikeBtn.classList.add("eval-selected");
+    likeBtn.classList.add("eval-disabled");
+
+    const evalData = {
+        participant_id: jsPsych.data.get().values()[0].participant_id,
+        profileID: id,
+        evaluation: "Dislike"
+    };
+
+    fetch('save_eval.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(evalData)
+    })
+    .then(res => res.text())
+    .then(console.log)
+    .catch(console.error);
+
+    jsPsych.data.addProperties(evalData);
+    setTimeout(() => jsPsych.finishTrial(), 2000);
+});
+
     }, 50);
   }
+
 };
-
-
     return [loadCSVTrial, profileTrial];
   }).flat();
 
-  const test_trial = {
+  const end = {
     type: jsPsychHtmlButtonResponse,
-    stimulus: "<h2>Test trial: Alles funktioniert!</h2><p>Dies ist eine kleine Testnachricht nach allen Profilen.</p>",
-    choices: ["Weiter"],
+    stimulus: `
+    <div class="fade-container"> 
+    <h2>Vielen Dank für deine Teilnahme!</h2>
+    <p>Wir haben deine Bewertungen gespeichert. Du kannst das Fenster nun schließen.</p>
+    </div>
+    `
+    ,
+    choices: ["Schließen"],
     css_classes: ['id-panel'],
+    on_start: function(trial) {
+    // fade in after content is added to DOM
+    setTimeout(() => {
+      const container = document.querySelector('.fade-container');
+      if(container) container.classList.add('visible');
+    }, 10);
+    },
+    on_finish: function() {
+        window.close();
+      }
   };
 
-  jsPsych.run([instructions, ...profileTimeline, test_trial]);
+  jsPsych.run([id_timeline ,instructions, ...profileTimeline, end]);
 }
 </script>
 </html>

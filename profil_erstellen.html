@@ -241,6 +241,15 @@ function startExperiment() {
     }
     };
 
+
+  let responses = {
+    q1: "",
+    q2: "",
+    q3: "",
+    q4: "",
+    q5: "",
+  }
+
   // --- 5 separate profile question trials ---
   const q1_trial = {
     type: jsPsychSurveyText,
@@ -259,10 +268,12 @@ function startExperiment() {
         if(container) container.classList.add('visible');
       }, 10);
     },
-    on_finish: function() {
+    on_finish: function(data) {
       // fade out before next trial
       const container = document.querySelector('.fade-container');
       if(container) container.classList.remove('visible');
+
+      responses.q1 = data.response.q1;
     }
   };
 
@@ -283,10 +294,12 @@ function startExperiment() {
         if(container) container.classList.add('visible');
       }, 10);
     },
-    on_finish: function() {
+    on_finish: function(data) {
       // fade out before next trial
       const container = document.querySelector('.fade-container');
       if(container) container.classList.remove('visible');
+
+      responses.q2 = data.response.q2;
     }
   };
 
@@ -307,10 +320,12 @@ function startExperiment() {
         if(container) container.classList.add('visible');
       }, 10);
     },
-    on_finish: function() {
+    on_finish: function(data) {
       // fade out before next trial
       const container = document.querySelector('.fade-container');
       if(container) container.classList.remove('visible');
+
+      responses.q3 = data.response.q3;
     }
   };
 
@@ -331,10 +346,12 @@ function startExperiment() {
         if(container) container.classList.add('visible');
       }, 10);
     },
-    on_finish: function() {
+    on_finish: function(data) {
       // fade out before next trial
       const container = document.querySelector('.fade-container');
       if(container) container.classList.remove('visible');
+
+      responses.q4 = data.response.q4;
     }
   };
 
@@ -348,6 +365,8 @@ function startExperiment() {
     on_finish: function(data) {
       jsPsych.data.addProperties({ q5: data.response.q5 });
 
+      responses.q5 = data.response.q5;
+
       // Save all responses after last question
       const id = jsPsych.data.get().filter({ trial_type: 'survey-text' }).values()[0].participant_id ||
                 jsPsych.data.get().first(1).values()[0].participant_id;
@@ -356,19 +375,18 @@ function startExperiment() {
       const header = ["ID", "Q1", "Q2", "Q3", "Q4", "Q5"];
       const row = [
         id,
-        `"${stored.q1 || ""}"`,
-        `"${stored.q2 || ""}"`,
-        `"${stored.q3 || ""}"`,
-        `"${stored.q4 || ""}"`,
+        `"${responses.q1 || ""}"`,
+        `"${responses.q2 || ""}"`,
+        `"${responses.q3 || ""}"`,
+        `"${responses.q4 || ""}"`,
         `"${data.response.q5 || ""}"`
       ].join(",");
       saveData(id + ".csv", header.join(",") + "\n" + row);
-    },
-    on_finish: function() {
+
       // fade out before next trial
       const container = document.querySelector('.fade-container');
       if(container) container.classList.remove('visible');
-      },
+    },
     on_start: function(trial) {
       // fade in after content is added to DOM
       setTimeout(() => {
@@ -479,7 +497,6 @@ function startExperiment() {
     redoProfilePic = data.response === 1; // true → repeat if edit
   }
 };
-
 
     // --- Updated profile loop ---
   const profile_loop = {
