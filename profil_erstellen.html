@@ -90,7 +90,7 @@ function startExperiment() {
       if (!wrapper.querySelector('.footnote')) {
         const footnote = document.createElement('div');
         footnote.className = 'footnote';
-        footnote.innerText = '© 2025 ZI Mannheim – Alle Rechte vorbehalten';
+        footnote.innerText = '© 2025 ZI Mannheim';
         wrapper.appendChild(footnote);
       }
     },
@@ -118,8 +118,9 @@ function startExperiment() {
   type: jsPsychHtmlButtonResponse,
   stimulus: `<div class="fade-container"> 
               <h2>Willkommen!</h2>
-              <p>Im folgenden wirst du dein Profil erstellen.</p> 
-              <p>Dein Profil wird aus einem Profilbild und fünf Informationen bestehen.</p>
+              <p>Im folgenden wirst du dein Profil für die Studie erstellen.</p> 
+              <p>Dein Profil wird aus einem <b>Profilbild und fünf persönlichen Informationen</b> bestehen.</p>
+              <p>Dein persönliches Profil wird anschließend in unserer Datenbank gespeichert und anschließend anderen Studienteilnehmern gezeigt.</p>
             </div>`,
   choices: ["Weiter"],
   css_classes: ['id-panel'],
@@ -141,8 +142,8 @@ function startExperiment() {
       type: jsPsychHtmlButtonResponse,
       stimulus: `
                 <div class="fade-container">
-                <p>Nun werden wir dir einige Fragen stellen. Bitte beantworte die Fragen in 2-3 kurzen Sätzen.</p> 
-                <p>Deine Antworten werden <b>Teil deines Profils sein.</b></p>
+                <p>Nun werden wir dir einige Fragen stellen. Bitte beantworte jede Frage in 1-3 kurzen Sätzen.</p> 
+                <p>Deine Antworten auf diese Fragen werden <b>Teil deines Profils sein.</b></p>
                 </div>
                 `,
       choices: ["Weiter"],
@@ -166,7 +167,7 @@ function startExperiment() {
       type: jsPsychHtmlKeyboardResponse,
       stimulus: `
         <div class="fade-container">
-        <p><b>Bitte wähle nun dein Profilbild aus:</b></p>
+        <p><b>Bitte wähle dein Profilbild aus:</b></p>
         <input type="file" id="profilePicInput" accept="image/*">
         <br><br>
         <img id="profilePicImage" style="max-width: 300px; max-height: 300px; display:none;">
@@ -241,7 +242,6 @@ function startExperiment() {
     }
     };
 
-
   let responses = {
     q1: "",
     q2: "",
@@ -254,7 +254,7 @@ function startExperiment() {
   const q1_trial = {
     type: jsPsychSurveyText,
     questions: [
-      { prompt: `<div class="fade-container">${q1_string}</div>`, rows: 2, columns: 50, required: true, name: "q1" }
+      { prompt: `<div class="fade-container"><b>${q1_string}</div>`, rows: 4, columns: 50, required: true, name: "q1" }
     ],
     button_label: "Weiter",
     css_classes: ['id-panel'],
@@ -280,7 +280,7 @@ function startExperiment() {
   const q2_trial = {
     type: jsPsychSurveyText,
     questions: [
-      { prompt: `<div class="fade-container">${q2_string}</div>`, rows: 2, columns: 50, required: true, name: "q2" }
+      { prompt: `<div class="fade-container"><b>${q2_string}</div>`, rows: 4, columns: 50, required: true, name: "q2" }
     ],
     button_label: "Weiter",
     css_classes: ['id-panel'],
@@ -306,7 +306,7 @@ function startExperiment() {
   const q3_trial = {
     type: jsPsychSurveyText,
     questions: [
-      { prompt: `<div class="fade-container">${q3_string}</div>`, rows: 2, columns: 50, required: true, name: "q3" }
+      { prompt: `<div class="fade-container"><b>${q3_string}</div>`, rows: 4, columns: 50, required: true, name: "q3" }
     ],
     button_label: "Weiter",
     css_classes: ['id-panel'],
@@ -332,7 +332,7 @@ function startExperiment() {
   const q4_trial = {
     type: jsPsychSurveyText,
     questions: [
-      {prompt: `<div class="fade-container">${q4_string}</div>`, rows: 2, columns: 50, required: true, name: "q4" }
+      {prompt: `<div class="fade-container"><b>${q4_string}</div>`, rows: 4, columns: 50, required: true, name: "q4" }
     ],
     button_label: "Weiter",
     css_classes: ['id-panel'],
@@ -358,7 +358,7 @@ function startExperiment() {
   const q5_trial = {
     type: jsPsychSurveyText,
     questions: [
-      { prompt: `<div class="fade-container">${q5_string}</div>`, rows: 2, columns: 50, required: true, name: "q5" }
+      { prompt: `<div class="fade-container"><b>${q5_string}</div>`, rows: 4, columns: 50, required: true, name: "q5" }
     ],
     button_label: "Weiter",
     css_classes: ['id-panel'],
@@ -455,8 +455,15 @@ function startExperiment() {
     };
 
     const img_html = `
-      <img src="${currentImagePath}?t=${Date.now()}" 
-           style="max-width:150px; max-height:150px; border-radius:50%; margin-bottom: 20px;">
+            <div class="profile-pic-wrapper">
+              <div class="profile-pic-ring">
+                <img 
+                  src="${currentImagePath}?t=${Date.now()}" 
+                  alt="Profile picture"
+                  class="profile-pic"
+                >
+              </div>
+            </div>
     `;
 
     const qa_html = `

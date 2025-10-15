@@ -154,7 +154,7 @@ function startExperiment() {
       if (!wrapper.querySelector('.footnote')) {
         const footnote = document.createElement('div');
         footnote.className = 'footnote';
-        footnote.innerText = '© 2025 ZI Mannheim – Alle Rechte vorbehalten';
+        footnote.innerText = '© 2025 ZI Mannheim';
         wrapper.appendChild(footnote);
       }
     },
@@ -236,30 +236,55 @@ function startExperiment() {
   stimulus: function() {
     return `
       <div class="fade-container"> 
-      <div style="display:flex; justify-content:center; align-items:flex-start; margin-top:20px; gap:40px;">
+        <!-- Outer flex container -->
+        <div style="
+          display: flex; 
+          justify-content: center; 
+          align-items: center; 
+          margin-top: 0px; 
+          gap: 40px;
+        ">
 
-        <!-- Left panel -->
-        <div class="profile" style="max-width: 750px;">
-          <img src="${currentImagePath}?t=${Date.now()}" 
-               style="max-width:150px; max-height:150px; border-radius:50%; margin-bottom:20px;">
-          
-          <div class="qa-container">
-            <div class="qa-row"><span class="qa-label"><b>${q1_string}</b></span><span class="qa-answer">${currentSurveyData.Q1}</span></div>
-            <div class="qa-row"><span class="qa-label"><b>${q2_string}</b></span><span class="qa-answer">${currentSurveyData.Q2}</span></div>
-            <div class="qa-row"><span class="qa-label"><b>${q3_string}</b></span><span class="qa-answer">${currentSurveyData.Q3}</span></div>
-            <div class="qa-row"><span class="qa-label"><b>${q4_string}</b></span><span class="qa-answer">${currentSurveyData.Q4}</span></div>
-            <div class="qa-row"><span class="qa-label"><b>${q5_string}</b></span><span class="qa-answer">${currentSurveyData.Q5}</span></div>
-          </div>
-        </div>
+          <!-- Left panel -->
+          <div class="profile" style="max-width: 800px;">
+            <div class="profile-pic-wrapper">
+              <div class="profile-pic-ring">
+                <img 
+                  src="${currentImagePath}?t=${Date.now()}" 
+                  alt="Profile picture"
+                  class="profile-pic"
+                >
+              </div>
+            </div>
 
-        <!-- Right column -->
-        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center;">
-          <div style="display:flex; flex-direction:column; justify-content:center; height: 100%;">
-            <img src="dep_img/like.png" id="like-btn" class="eval-img" style="margin-bottom:30px;">
-            <img src="dep_img/dislike.png" id="dislike-btn" class="eval-img">
+            <div class="qa-container">
+              <div class="qa-row"><span class="qa-label"><b>${q1_string}</b></span><span class="qa-answer">${currentSurveyData.Q1}</span></div>
+              <div class="qa-row"><span class="qa-label"><b>${q2_string}</b></span><span class="qa-answer">${currentSurveyData.Q2}</span></div>
+              <div class="qa-row"><span class="qa-label"><b>${q3_string}</b></span><span class="qa-answer">${currentSurveyData.Q3}</span></div>
+              <div class="qa-row"><span class="qa-label"><b>${q4_string}</b></span><span class="qa-answer">${currentSurveyData.Q4}</span></div>
+              <div class="qa-row"><span class="qa-label"><b>${q5_string}</b></span><span class="qa-answer">${currentSurveyData.Q5}</span></div>
+            </div>
           </div>
+
+          <!-- Right column -->
+          <div style="
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+          ">
+            <div style="
+              display: flex; 
+              flex-direction: column; 
+              justify-content: center; 
+              align-items: center;
+              gap: 30px;
+            ">
+              <img src="dep_img/like.png" id="like-btn" class="eval-img">
+              <img src="dep_img/dislike.png" id="dislike-btn" class="eval-img">
+            </div>
+          </div>
+
         </div>
-      </div>
       </div>
     `;
   },
@@ -278,56 +303,56 @@ function startExperiment() {
       }, 10);
 
       likeBtn.addEventListener("click", () => {
-    likeBtn.classList.add("eval-selected");
-    dislikeBtn.classList.add("eval-disabled");
+        likeBtn.classList.add("eval-selected");
+        dislikeBtn.classList.add("eval-disabled");
 
-    const evalData = {
-        participant_id: jsPsych.data.get().values()[0].participant_id,
-        profileID: id,
-        evaluation: "Like"
-    };
+        const evalData = {
+          participant_id: jsPsych.data.get().values()[0].participant_id,
+          profileID: id,
+          evaluation: "Like"
+        };
 
-    // Send evaluation to server
-    fetch('save_eval.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams(evalData)
-    })
-    .then(res => res.text())
-    .then(console.log)
-    .catch(console.error);
+        fetch('save_eval.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams(evalData)
+        })
+        .then(res => res.text())
+        .then(console.log)
+        .catch(console.error);
 
-    jsPsych.data.addProperties(evalData);
-    setTimeout(() => jsPsych.finishTrial(), 2000);
-});
+        jsPsych.data.addProperties(evalData);
+        setTimeout(() => jsPsych.finishTrial(), 2000);
+      });
 
-dislikeBtn.addEventListener("click", () => {
-    dislikeBtn.classList.add("eval-selected");
-    likeBtn.classList.add("eval-disabled");
+      dislikeBtn.addEventListener("click", () => {
+        dislikeBtn.classList.add("eval-selected");
+        likeBtn.classList.add("eval-disabled");
 
-    const evalData = {
-        participant_id: jsPsych.data.get().values()[0].participant_id,
-        profileID: id,
-        evaluation: "Dislike"
-    };
+        const evalData = {
+          participant_id: jsPsych.data.get().values()[0].participant_id,
+          profileID: id,
+          evaluation: "Dislike"
+        };
 
-    fetch('save_eval.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams(evalData)
-    })
-    .then(res => res.text())
-    .then(console.log)
-    .catch(console.error);
+        fetch('save_eval.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams(evalData)
+        })
+        .then(res => res.text())
+        .then(console.log)
+        .catch(console.error);
 
-    jsPsych.data.addProperties(evalData);
-    setTimeout(() => jsPsych.finishTrial(), 2000);
-});
+        jsPsych.data.addProperties(evalData);
+        setTimeout(() => jsPsych.finishTrial(), 2000);
+      });
 
     }, 50);
   }
-
 };
+
+
     return [loadCSVTrial, profileTrial];
   }).flat();
 

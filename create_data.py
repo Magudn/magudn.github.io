@@ -7,35 +7,35 @@ os.makedirs(target_folder, exist_ok=True)
 
 # Pseudo data for 10 people: each answer is a separate string
 data = [
-    ["Ich bin zuverlässig und ehrlich. Wenn ich etwas verspreche, halte ich es auch. Außerdem kann man mit mir immer gut lachen.", 
-     "Ich bin manchmal zu ungeduldig. Wenn etwas nicht sofort klappt, verliere ich schnell die Lust. Und ich kann ziemlich stur sein.", 
-     "Ich habe Angst davor, wichtige Menschen zu verlieren. Manchmal auch davor, zu scheitern oder nicht gut genug zu sein. Das beschäftigt mich öfter, als ich zugeben möchte.", 
-     "Lange Gespräche mit Freunden, gutes Essen und Musik. Ich liebe Spaziergänge bei Sonnenuntergang. Und wenn es regnet, bleibe ich gern mit einem Buch zu Hause.", 
-     "...sich ständig über andere lustig machen. Arroganz und Respektlosigkeit finde ich furchtbar. Ein bisschen Demut steht jedem gut."],
+    ["Dass ich lustig bin.", 
+     "Wahrscheinlich, dass ich manchmal etwas faul bin und Dinge gerne aufschiebe. Ich komme auch oft zu spät.", 
+     "Alleine zu sein.", 
+     "Mein Hund, meine Freunde und Musik.", 
+     "Menschen, die Hinter dem Rücken anderer über sie reden."],
 
-    ["Ich bin hilfsbereit und immer für meine Freunde da. Außerdem bin ich ziemlich kreativ und habe immer neue Ideen.", 
-     "Manchmal bin ich faul und schiebe Dinge vor mir her. Außerdem rede ich manchmal zu viel.", 
-     "Ich habe Angst davor, vor anderen blöd dazustehen. Auch vor Prüfungen bin ich manchmal richtig nervös.", 
-     "Videospiele spielen, Musik hören und draußen Sport machen. Ich liebe es auch, Zeit mit meinen Freunden zu verbringen.", 
-     "Leute, die andere mobben oder ständig gemein sind. Auch Fake-Freundlichkeit nervt mich."],
+    ["Dass ich immer für meine Freunde und Familie da bin.", 
+     "Dass ich ungeduldig bin. Meine Eltern sagen auch, dass ich manchmal zu viel rede.", 
+     "Spinnen.", 
+     "Meine Familie, meine Freundinnen, Tiere (besonders Katzen) und Musik. Ich mag es auch, zu malen oder draußen zu sein, wenn das Wetter schön ist.", 
+     "Leute, die andere ärgern oder gemein sind. Ich finde es total doof, wenn jemand ausgelacht oder ausgeschlossen wird."],
 
-    ["Ich bin loyal und halte meine Versprechen. Meine Freunde sagen, ich sei lustig und positiv.", 
-     "Ich kann manchmal ziemlich stur sein und will immer Recht haben. Außerdem vergesse ich manchmal Dinge.", 
-     "Ich habe Angst davor, allein zu sein oder dass etwas Schlimmes meiner Familie passiert.", 
-     "Fußball spielen, Serien schauen und mit Freunden quatschen. Ich liebe auch Pizza und Schokolade.", 
-     "Leute, die arrogant sind oder andere runterziehen. Ich mag keine Lügner."],
+    ["Dass ich ruhig und ausgeglichen bin und während stressigen Situationen meist gelassen bleibe.", 
+     "Dass ich manchmal zu zurückgezogen bin und lange brauche, um mit Menschen warm zu werden.", 
+     "Ich habe Angst, Fehler zu machen und von anderen falsch verstanden zu werden.", 
+     "Meine Familie und Freunde.", 
+     "Leute, die laut und respektlos sind. Ich finde es unangenehm, wenn jemand immer im Mittelpunkt stehen will und andere dabei übergeht."],
 
-    ["Ich bin freundlich und geduldig. Viele sagen, ich sei ein guter Zuhörer.", 
-     "Ich bin oft zu schüchtern und traue mich nicht, meine Meinung zu sagen. Manchmal überlege ich zu viel.", 
-     "Ich habe Angst davor, meine Ziele nicht zu erreichen. Auch davor, dass Freunde mich enttäuschen, mache ich mir Sorgen.", 
-     "Zeichnen, lesen und Musik hören. Ich liebe auch Spaziergänge mit meinem Hund.", 
-     "Leute, die unfreundlich oder egoistisch sind. Ich mag keine Menschen, die andere ständig kritisieren."],
+    ["Dass ich nett und lustig bin.", 
+     "Dass ich manchmal meine Hausaufgaben nicht mache.", 
+     "Im Dunkeln zu sein.", 
+     "Fußball spielen und mein Hund.", 
+     "Kinder, die gemein sind und andere ärgern."],
 
-    ["Ich bin lustig und sportlich. Meine Freunde sagen, ich bin loyal und ehrlich.", 
-     "Ich kann schnell genervt sein und verliere manchmal die Geduld. Auch zu faul sein passiert öfter.", 
-     "Ich habe Angst davor, etwas Wichtiges zu verpassen oder zu versagen.", 
-     "Skateboard fahren, Musik hören und mit Freunden chillen. Ich liebe auch Pizza und Filme.", 
-     "Leute, die andere mobben oder nur an sich denken. Ich mag keine Lügner und Angeber."]
+    ["Meine Mutter sagt oft, dass ich ehrgeizig bin.", 
+     "Manchmal bin ich schnell genervt weil ich ungeduldig bin.", 
+     "Ich habe Angst davor, dass meinen Eltern etwas schlimmes passiert.", 
+     "Meine Familie und Bücher.", 
+     "Leute, die andere mobben. Ich mag auch keine Lügner und Angeber."]
 ]
 
 
