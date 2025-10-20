@@ -214,7 +214,7 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  border-top: 1px solid #eee;    /* move the line above instead of below */
+  border-top: 1px solid #000000;    /* move the line above instead of below */
   padding: 4px 0;
 }
 

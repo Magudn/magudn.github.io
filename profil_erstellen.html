@@ -118,9 +118,29 @@ function startExperiment() {
   type: jsPsychHtmlButtonResponse,
   stimulus: `<div class="fade-container"> 
               <h2>Willkommen!</h2>
-              <p>Im folgenden wirst du dein Profil für die Studie erstellen.</p> 
-              <p>Dein Profil wird aus einem <b>Profilbild und fünf persönlichen Informationen</b> bestehen.</p>
-              <p>Dein persönliches Profil wird anschließend in unserer Datenbank gespeichert und anschließend anderen Studienteilnehmern gezeigt.</p>
+              <p>
+              Du wirst nun ein <b>Profil</b> über dich selbst auf dieser Online-Platform erstellen, damit wir es anderen Teilnehmern der Studie zeigen 
+              können. Die anderen Teilnehmer sind <b>Kinder und Jugendliche zwischen 10 und 18 Jahren.</b> Sie werden gefragt, was sie über dich denken. 
+              Sie können wählen, ob sie dich mögen oder nicht.
+              </p> 
+
+              <p>So werden sie gebeten, ihre Entscheidung zu treffen:
+              <p>
+              
+              <i>
+              <p>„Magst du diese Person? Glaubst du, du könntest mit ihr im wirklichen Leben befreundet sein? Oder findest du diese Person langweilig und bist nicht daran
+              interessiert, sie näher kennenzulernen?
+              </p>
+              
+              <p>Klicke auf den grünen Daumen, der nach oben zeigt, wenn du glaubst, dass du mit dieser Person im wirklichen Leben befreundet sein könntest. Klicke auf den roten
+              Daumen, der nach unten zeigt, wenn du nicht daran interessiert bist, sie näher kennenzulernen.”
+              </p>
+              </i>
+
+              <p>
+              Dein Profil setzt sich aus einem <b>Profilbild</b> und <b>5 persönlichen Fragen</b> zusammen.
+              </p>
+
             </div>`,
   choices: ["Weiter"],
   css_classes: ['id-panel'],
@@ -142,8 +162,10 @@ function startExperiment() {
       type: jsPsychHtmlButtonResponse,
       stimulus: `
                 <div class="fade-container">
-                <p>Nun werden wir dir einige Fragen stellen. Bitte beantworte jede Frage in 1-3 kurzen Sätzen.</p> 
-                <p>Deine Antworten auf diese Fragen werden <b>Teil deines Profils sein.</b></p>
+                <p>Bitte beantworte nun die folgenden <b>5 persönlichen Fragen.</b> Sie geben anderen einen guten Eindruck davon, wer Du bist. Bitte beantworte
+                jede Frage sorgfältig und ehrlich in etwa <b>2-3 Sätzen.</b> Nimm dir Zeit für die Beantwortung, denn dies sind die einzigen Informationen, anhand derer andere
+                dich beurteilen können. 
+                </p> 
                 </div>
                 `,
       choices: ["Weiter"],
