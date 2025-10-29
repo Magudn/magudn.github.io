@@ -38,7 +38,6 @@ data = [
      "Leute, die andere mobben. Ich mag auch keine Lügner und Angeber."]
 ]
 
-
 # Column headers
 headers = ["ID", "Q1", "Q2", "Q3", "Q4", "Q5"]
 
