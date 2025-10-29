@@ -2,69 +2,35 @@
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>Profil Bewerten</title>
+  <title>Profil Erstellen</title>
   <script src="jspsych-7.1.2/dist/jspsych.js"></script>
   <script src="jspsych-7.1.2/dist/plugin-html-button-response.js"></script>
   <script src="jspsych-7.1.2/dist/plugin-html-keyboard-response.js"></script>
   <script src="jspsych-7.1.2/dist/plugin-survey-text.js"></script>
   <link href="jspsych-7.1.2/dist/jspsych.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-  <link href="jspsych-7.1.2/dist/jspsych.css" rel="stylesheet" />
   <link rel="stylesheet" href="style.css">
+  <!-- Cropper.js CSS -->
+  <link  href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+  <!-- Cropper.js JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
   <style>
-    .eval-img {
-      width: 100px;
-      cursor: pointer;
-      margin: 0 20px;
-      transition: transform 0.2s ease, filter 0.2s ease, opacity 0.2s ease;
-    }
-
-    .eval-img:hover {
-      transform: scale(1.1);
-    }
-
-    .eval-disabled {
-      cursor: default;
-      opacity: 0.5;
-      transform: scale(0.9);
-      pointer-events: none;
-    }
-
-    .eval-selected {
-      transform: scale(1.2);
-      pointer-events: none;
-    }
+    body { background-color: white; color: black; font-size: 18px; }
+    #input-0 { font-size: 16px; }
   </style>
 </head>
-
 <body>
   <script src="question_strings.js"></script>
 </body>
-
 <script>
-const jsPsych = initJsPsych();
-let currentSurveyData = {};
-let currentImagePath = "";
-
-// used to log in
-let validIDs = [];
-
-// used to load profiles
-let valid_profile_ids = ["00001",
-  "00002",
-  "00003",
-  "00004",
-  "00005",]
-;
-let selectedIDs = [];
-
 // --- Load IDs first ---
+let validIDs = [];
+let redoProfilePic = false;
+let currentImagePath = "";   // global image path (determined before preview)
+
 fetch('ids.json')
   .then(response => response.json())
   .then(data => {
     validIDs = data;
-    pickRandomIDs(5);
     startExperiment();
   })
   .catch(err => {
@@ -72,61 +38,31 @@ fetch('ids.json')
     console.error(err);
   });
 
-// --- Pick n unique random IDs ---
-function pickRandomIDs(n) {
-  const shuffled = [...valid_profile_ids].sort(() => 0.5 - Math.random());
-  selectedIDs = shuffled.slice(0, n);
-}
-
-// --- CSV parsing ---
-function parseCSVLine(line) {
-  const regex = /(?:\"([^\"]*)\")|([^,]+)/g;
-  const result = [];
-  let match;
-  while ((match = regex.exec(line)) !== null) {
-      result.push(match[1] !== undefined ? match[1] : match[2]);
-  }
-  return result;
-}
-
-function loadCSVData(id) {
-  const filePath = `db/${id}.csv`;
-  return fetch(filePath)
-      .then(response => {
-          if (!response.ok) throw new Error("CSV file not found");
-          return response.text();
-      })
-      .then(csvText => {
-          const rows = csvText.trim().split("\n");
-          const headers = parseCSVLine(rows[0]);
-          const values = parseCSVLine(rows[1]);
-          const data = {};
-          headers.forEach((header, i) => { data[header] = values[i]; });
-          return data;
-      });
-}
-
-// --- Image finder ---
-async function findExistingImage(id) {
-  const extensions = ['png', 'jpg', 'jpeg', 'bmp', 'webp'];
-  for (const ext of extensions) {
-    const path = `profile_pics/${id}.${ext}`;
-    try {
-      const res = await fetch(path, { method: 'HEAD' });
-      if (res.ok) return path;
-    } catch (e) {}
-  }
-  return "profile_pics/default.png";
-}
-
 function startExperiment() {
+  const jsPsych = initJsPsych();
+
+  function saveData(filename, filedata){
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', 'write_data.php'); 
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === 4) {
+        if(xhr.status === 200){
+          console.log(xhr.responseText);
+        } else {
+          console.error("Error saving data:", xhr.responseText);
+        }
+      }
+    };
+    xhr.send(JSON.stringify({filename: filename, filedata: filedata}));
+  }
 
   // --- Add logo to the page ---
   const logo = document.createElement('img');
   logo.src = 'zi.png';  // make sure this file is in the same folder as your HTML
   logo.className = 'top-logo';
   document.body.prepend(logo);  // adds logo at the top of body
-  
+
   // --- ID input ---
   const id_input = {
     type: jsPsychSurveyText,
@@ -178,82 +114,369 @@ function startExperiment() {
     loop_function: function(data) { return !data.values()[0].valid_id; }
   };
 
-  const instructions = {
-    type: jsPsychHtmlButtonResponse,
-    stimulus: `
-      <div class="fade-container"> 
-      <h2>Willkommen!</h2>
-      <p>Wir werden dir nun einige Profile zeigen, die von anderen Studienteilnehmern erstellt wurden. Bitte schau dir die Profile sorgfältig an.
-      
-      <p>
-        Klicke anschließend auf den <b>grünen Daumen, der nach oben zeigt,</b> wenn du diese Person magst und glaubst, dass du mit dieser Person im wirklichen Leben befreundet sein könntest. 
-      </p>
+  const welcome = {
+  type: jsPsychHtmlButtonResponse,
+  stimulus: `<div class="fade-container"> 
+              <h2>Willkommen!</h2>
+              <p>
+              Du wirst nun ein <b>Profil</b> über dich selbst auf dieser Online-Platform erstellen, damit wir es anderen Teilnehmern der Studie zeigen 
+              können. Die anderen Teilnehmer sind <b>Kinder und Jugendliche zwischen 10 und 18 Jahren.</b> Sie werden gefragt, was sie über dich denken. 
+              Sie können wählen, ob sie dich mögen oder nicht.
+              </p> 
 
-      <p>
-        Klicke auf den <b>roten Daumen, der nach unten zeigt,</b> wenn du glaubst, dass diese Person langweilig ist und nicht daran interessiert bist, sie näher kennenzulernen.
-      </p>
-      
-      </div>
-        `,
-    choices: ["Weiter"],
-    css_classes: ['id-panel'],
-    on_start: function(trial) {
-    // fade in after content is added to DOM
-    setTimeout(() => {
-      const container = document.querySelector('.fade-container');
-      if(container) container.classList.add('visible');
-    }, 10);
+              <p>So werden sie gebeten, ihre Entscheidung zu treffen:
+              <p>
+              
+              <i>
+              <p>„Magst du diese Person? Glaubst du, du könntest mit ihr im wirklichen Leben befreundet sein? Oder findest du diese Person langweilig und bist nicht daran
+              interessiert, sie näher kennenzulernen?
+              </p>
+              
+              <p>Klicke auf den grünen Daumen, der nach oben zeigt, wenn du glaubst, dass du mit dieser Person im wirklichen Leben befreundet sein könntest. Klicke auf den roten
+              Daumen, der nach unten zeigt, wenn du nicht daran interessiert bist, sie näher kennenzulernen.”
+              </p>
+              </i>
+
+              <p>
+              Dein Profil setzt sich aus einem <b>Profilbild</b> und <b>5 persönlichen Fragen</b> zusammen.
+              </p>
+
+            </div>`,
+  choices: ["Weiter"],
+  css_classes: ['id-panel'],
+  on_start: function(trial) {
+  // fade in after content is added to DOM
+  setTimeout(() => {
+    const container = document.querySelector('.fade-container');
+    if(container) container.classList.add('visible');
+  }, 10);
+  },
+  on_finish: function() {
+  // fade out before next trial
+  const container = document.querySelector('.fade-container');
+  if(container) container.classList.remove('visible');
+  }
+  };
+
+  const question_instructions = {
+      type: jsPsychHtmlButtonResponse,
+      stimulus: `
+                <div class="fade-container">
+                <p>Bitte beantworte nun die folgenden <b>5 persönlichen Fragen.</b> Sie geben anderen einen guten Eindruck davon, wer Du bist. Bitte beantworte
+                jede Frage sorgfältig und ehrlich in etwa <b>2-3 Sätzen.</b> Nimm dir Zeit für die Beantwortung, denn dies sind die einzigen Informationen, anhand derer andere
+                dich beurteilen können. 
+                </p> 
+                </div>
+                `,
+      choices: ["Weiter"],
+      css_classes: ['id-panel'],
+      on_start: function(trial) {
+      // fade in after content is added to DOM
+      setTimeout(() => {
+        const container = document.querySelector('.fade-container');
+        if(container) container.classList.add('visible');
+      }, 10);
     },
     on_finish: function() {
-    // fade out before next trial
-    const container = document.querySelector('.fade-container');
-    if(container) container.classList.remove('visible');
+      // fade out before next trial
+      const container = document.querySelector('.fade-container');
+      if(container) container.classList.remove('visible');
+    }
+    };
+
+  // --- Profile picture upload & crop trial ---
+  const profile_pic_trial = {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: `
+        <div class="fade-container">
+        <p><b>Bitte wähle dein Profilbild aus:</b></p>
+        <input type="file" id="profilePicInput" accept="image/*">
+        <br><br>
+        <img id="profilePicImage" style="max-width: 300px; max-height: 300px; display:none;">
+        <br>
+        <button id="confirmBtn" disabled>Weiter</button>
+        </div>
+      `,
+      css_classes: ['id-panel'],
+      choices: [], // no keyboard input
+      on_load: function(){
+        let cropper;
+        const fileInput = document.getElementById('profilePicInput');
+        const imageEl = document.getElementById('profilePicImage');
+        const confirmBtn = document.getElementById('confirmBtn');
+
+        fileInput.addEventListener('change', function(){
+          const file = fileInput.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = function(e){
+            imageEl.src = e.target.result;
+            imageEl.style.display = 'block';
+
+            // Destroy previous cropper if exists
+            if (cropper) cropper.destroy();
+
+            // Initialize Cropper.js
+            cropper = new Cropper(imageEl, {
+              aspectRatio: 1,      // square crop
+              viewMode: 1,
+              movable: true,
+              zoomable: true,
+              rotatable: false,
+              scalable: false,
+            });
+
+            confirmBtn.disabled = false; // enable button
+          };
+          reader.readAsDataURL(file);
+        });
+
+        confirmBtn.addEventListener('click', function(){
+          if (!cropper) return;
+          const croppedCanvas = cropper.getCroppedCanvas({ width: 200, height: 200 });
+          const croppedDataUrl = croppedCanvas.toDataURL('image/png');
+
+          // Send to backend
+          const id = jsPsych.data.get().last(1).values()[0].participant_id; // optional: use participant ID
+          fetch('upload_profile_pic.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ participant_id: id, image: croppedDataUrl })
+          }).then(res => res.text())
+            .then(response => console.log(response))
+            .catch(err => console.error(err));
+
+          // Finish trial (uploaded flag)
+          jsPsych.finishTrial({ uploaded: true });
+        });
+      },
+      on_start: function(trial) {
+      // fade in after content is added to DOM
+      setTimeout(() => {
+        const container = document.querySelector('.fade-container');
+        if(container) container.classList.add('visible');
+      }, 10);
+    },
+    on_finish: function() {
+      // fade out before next trial
+      const container = document.querySelector('.fade-container');
+      if(container) container.classList.remove('visible');
+    }
+    };
+
+  let responses = {
+    q1: "",
+    q2: "",
+    q3: "",
+    q4: "",
+    q5: "",
+  }
+
+  // --- 5 separate profile question trials ---
+  const q1_trial = {
+    type: jsPsychSurveyText,
+    questions: [
+      { prompt: `<div class="fade-container"><b>${q1_string}</div>`, rows: 4, columns: 50, required: true, name: "q1" }
+    ],
+    button_label: "Weiter",
+    css_classes: ['id-panel'],
+    on_finish: function(data) {
+      jsPsych.data.addProperties({ q1: data.response.q1 });
+    },
+    on_start: function(trial) {
+      // fade in after content is added to DOM
+      setTimeout(() => {
+        const container = document.querySelector('.fade-container');
+        if(container) container.classList.add('visible');
+      }, 10);
+    },
+    on_finish: function(data) {
+      // fade out before next trial
+      const container = document.querySelector('.fade-container');
+      if(container) container.classList.remove('visible');
+
+      responses.q1 = data.response.q1;
     }
   };
 
-  let profil_bewertungen = {
-    bew1: "",
-    bew2: "",
-    bew3: "",
-    bew4: "",
-    bew5: "",
-  }
+  const q2_trial = {
+    type: jsPsychSurveyText,
+    questions: [
+      { prompt: `<div class="fade-container"><b>${q2_string}</div>`, rows: 4, columns: 50, required: true, name: "q2" }
+    ],
+    button_label: "Weiter",
+    css_classes: ['id-panel'],
+    on_finish: function(data) {
+      jsPsych.data.addProperties({ q2: data.response.q2 });
+    },
+    on_start: function(trial) {
+      // fade in after content is added to DOM
+      setTimeout(() => {
+        const container = document.querySelector('.fade-container');
+        if(container) container.classList.add('visible');
+      }, 10);
+    },
+    on_finish: function(data) {
+      // fade out before next trial
+      const container = document.querySelector('.fade-container');
+      if(container) container.classList.remove('visible');
 
-  const profileTimeline = selectedIDs.map(id => {
-    const loadCSVTrial = {
+      responses.q2 = data.response.q2;
+    }
+  };
+
+  const q3_trial = {
+    type: jsPsychSurveyText,
+    questions: [
+      { prompt: `<div class="fade-container"><b>${q3_string}</div>`, rows: 4, columns: 50, required: true, name: "q3" }
+    ],
+    button_label: "Weiter",
+    css_classes: ['id-panel'],
+    on_finish: function(data) {
+      jsPsych.data.addProperties({ q3: data.response.q3 });
+    },
+    on_start: function(trial) {
+      // fade in after content is added to DOM
+      setTimeout(() => {
+        const container = document.querySelector('.fade-container');
+        if(container) container.classList.add('visible');
+      }, 10);
+    },
+    on_finish: function(data) {
+      // fade out before next trial
+      const container = document.querySelector('.fade-container');
+      if(container) container.classList.remove('visible');
+
+      responses.q3 = data.response.q3;
+    }
+  };
+
+  const q4_trial = {
+    type: jsPsychSurveyText,
+    questions: [
+      {prompt: `<div class="fade-container"><b>${q4_string}</div>`, rows: 4, columns: 50, required: true, name: "q4" }
+    ],
+    button_label: "Weiter",
+    css_classes: ['id-panel'],
+    on_finish: function(data) {
+      jsPsych.data.addProperties({ q4: data.response.q4 });
+    },
+    on_start: function(trial) {
+      // fade in after content is added to DOM
+      setTimeout(() => {
+        const container = document.querySelector('.fade-container');
+        if(container) container.classList.add('visible');
+      }, 10);
+    },
+    on_finish: function(data) {
+      // fade out before next trial
+      const container = document.querySelector('.fade-container');
+      if(container) container.classList.remove('visible');
+
+      responses.q4 = data.response.q4;
+    }
+  };
+
+  const q5_trial = {
+    type: jsPsychSurveyText,
+    questions: [
+      { prompt: `<div class="fade-container"><b>${q5_string}</div>`, rows: 4, columns: 50, required: true, name: "q5" }
+    ],
+    button_label: "Weiter",
+    css_classes: ['id-panel'],
+    on_finish: function(data) {
+      jsPsych.data.addProperties({ q5: data.response.q5 });
+
+      responses.q5 = data.response.q5;
+
+      // Save all responses after last question
+      const id = jsPsych.data.get().filter({ trial_type: 'survey-text' }).values()[0].participant_id ||
+                jsPsych.data.get().first(1).values()[0].participant_id;
+
+      const stored = jsPsych.data.get().values()[0];
+      const header = ["ID", "Q1", "Q2", "Q3", "Q4", "Q5"];
+      const row = [
+        id,
+        `"${responses.q1 || ""}"`,
+        `"${responses.q2 || ""}"`,
+        `"${responses.q3 || ""}"`,
+        `"${responses.q4 || ""}"`,
+        `"${data.response.q5 || ""}"`
+      ].join(",");
+      saveData(id + ".csv", header.join(",") + "\n" + row);
+
+      // fade out before next trial
+      const container = document.querySelector('.fade-container');
+      if(container) container.classList.remove('visible');
+    },
+    on_start: function(trial) {
+      // fade in after content is added to DOM
+      setTimeout(() => {
+        const container = document.querySelector('.fade-container');
+        if(container) container.classList.add('visible');
+      }, 10);
+    },
+  };
+
+    // --- Image finder function (checks extensions on server) ---
+    async function findExistingImage(id) {
+      const extensions = ['png', 'jpg', 'jpeg', 'bmp', 'webp'];
+      for (const ext of extensions) {
+        const path = `profile_pics/${id}.${ext}`;
+        try {
+          // HEAD is lighter than GET
+          const res = await fetch(path, { method: 'HEAD' });
+          if (res.ok) return path;
+        } catch (e) {
+          // ignore
+        }
+      }
+      return "profile_pics/default.png"; // fallback
+    }
+
+    // --- Trial that finds the correct image path BEFORE the preview ---
+    const find_image_trial = {
       type: jsPsychHtmlKeyboardResponse,
-      stimulus: "Bitte warten, während die Profildaten geladen werden...",
+      stimulus: "Bitte warten, während das Profilbild überprüft wird...",
       choices: "NO_KEYS",
       trial_duration: null,
       on_start: async function(trial) {
+        const id = jsPsych.data.get().last(1).values()[0].participant_id;
         try {
-          currentSurveyData = await loadCSVData(id);
           currentImagePath = await findExistingImage(id);
-        } catch(err) {
-          console.error(err);
-          currentSurveyData = { Q1:"Fehler", Q2:"Fehler", Q3:"Fehler", Q4:"Fehler", Q5:"Fehler" };
+        } catch (err) {
+          console.error("Fehler beim Prüfen des Bildes:", err);
           currentImagePath = "profile_pics/default.png";
         }
         jsPsych.finishTrial();
-      }
+      },
     };
 
-    const profileTrial = {
-  type: jsPsychHtmlKeyboardResponse,
-  stimulus: function() {
-    return `
-      <div class="fade-container"> 
-        <!-- Outer flex container -->
-        <div style="
-          display: flex; 
-          justify-content: center; 
-          align-items: center; 
-          margin-top: 0px; 
-          gap: 40px;
-        ">
+    const end = {
+      type: jsPsychHtmlButtonResponse,
+      stimulus: "<h2>Vielen Dank für deine Teilnahme!</h2><p>Dein Profil wurde gespeichert. Du kannst das Fenster nun schließen.</p>",
+      choices: ["Schließen"],
+      on_finish: function() {
+        window.close();
+      },
+    };
 
-          <!-- Left panel -->
-          <div class="profile" style="max-width: 800px;">
+    const profile_preview = {
+  type: jsPsychHtmlButtonResponse,
+  css_classes: ['id_panel', 'profile'],
+  stimulus: function() {
+    const id = jsPsych.data.get().first(1).values()[0].participant_id || "Unbekannt";
+
+    const surveyData = jsPsych.data.get().filter({trial_type: 'survey-text'}).last(5).values();
+    const data = {
+      q1: surveyData[0].response.q1,
+      q2: surveyData[1].response.q2,
+      q3: surveyData[2].response.q3,
+      q4: surveyData[3].response.q4,
+      q5: surveyData[4].response.q5
+    };
+
+    const img_html = `
             <div class="profile-pic-wrapper">
               <div class="profile-pic-ring">
                 <img 
@@ -263,131 +486,74 @@ function startExperiment() {
                 >
               </div>
             </div>
+    `;
 
-            <div class="qa-container">
-              <div class="qa-row"><span class="qa-label"><b>${q1_string}</b></span><span class="qa-answer">${currentSurveyData.Q1}</span></div>
-              <div class="qa-row"><span class="qa-label"><b>${q2_string}</b></span><span class="qa-answer">${currentSurveyData.Q2}</span></div>
-              <div class="qa-row"><span class="qa-label"><b>${q3_string}</b></span><span class="qa-answer">${currentSurveyData.Q3}</span></div>
-              <div class="qa-row"><span class="qa-label"><b>${q4_string}</b></span><span class="qa-answer">${currentSurveyData.Q4}</span></div>
-              <div class="qa-row"><span class="qa-label"><b>${q5_string}</b></span><span class="qa-answer">${currentSurveyData.Q5}</span></div>
-            </div>
-          </div>
+    const qa_html = `
+      <div class="qa-row"><span class="qa-label"><b>${q1_string}</b></span><span class="qa-answer">${data.q1}</span></div>
+      <div class="qa-row"><span class="qa-label"><b>${q2_string}</b></span><span class="qa-answer">${data.q2}</span></div>
+      <div class="qa-row"><span class="qa-label"><b>${q3_string}</b></span><span class="qa-answer">${data.q3}</span></div>
+      <div class="qa-row"><span class="qa-label"><b>${q4_string}</b></span><span class="qa-answer">${data.q4}</span></div>
+      <div class="qa-row"><span class="qa-label"><b>${q5_string}</b></span><span class="qa-answer">${data.q5}</span></div>
+    `;
 
-          <!-- Right column -->
-          <div style="
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-          ">
-            <div style="
-              display: flex; 
-              flex-direction: column; 
-              justify-content: center; 
-              align-items: center;
-              gap: 30px;
-            ">
-              <img src="dep_img/like.png" id="like-btn" class="eval-img">
-              <img src="dep_img/dislike.png" id="dislike-btn" class="eval-img">
-            </div>
-          </div>
-
+    return `
+      <div class="fade-container">
+        ${img_html}
+        <div class="qa-container">
+          ${qa_html}
         </div>
       </div>
     `;
   },
-  choices: [],
-  trial_duration: null,
-  response_ends_trial: false,
+  choices: ["Profil akzeptieren", "Profil bearbeiten"],
+  button_html: [
+  `<button class="accept">%choice%</button>`,
+  `<button class="edit">%choice%</button>`
+  ],
   on_start: function(trial) {
-    setTimeout(() => {
-      const likeBtn = document.getElementById("like-btn");
-      const dislikeBtn = document.getElementById("dislike-btn");
-
-      // fade in after content is added to DOM
-      setTimeout(() => {
-        const container = document.querySelector('.fade-container');
-        if(container) container.classList.add('visible');
-      }, 10);
-
-      likeBtn.addEventListener("click", () => {
-        likeBtn.classList.add("eval-selected");
-        dislikeBtn.classList.add("eval-disabled");
-
-        const evalData = {
-          participant_id: jsPsych.data.get().values()[0].participant_id,
-          profileID: id,
-          evaluation: "Like"
-        };
-
-        fetch('save_eval.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams(evalData)
-        })
-        .then(res => res.text())
-        .then(console.log)
-        .catch(console.error);
-
-        jsPsych.data.addProperties(evalData);
-        setTimeout(() => jsPsych.finishTrial(), 2000);
-      });
-
-      dislikeBtn.addEventListener("click", () => {
-        dislikeBtn.classList.add("eval-selected");
-        likeBtn.classList.add("eval-disabled");
-
-        const evalData = {
-          participant_id: jsPsych.data.get().values()[0].participant_id,
-          profileID: id,
-          evaluation: "Dislike"
-        };
-
-        fetch('save_eval.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams(evalData)
-        })
-        .then(res => res.text())
-        .then(console.log)
-        .catch(console.error);
-
-        jsPsych.data.addProperties(evalData);
-        setTimeout(() => jsPsych.finishTrial(), 2000);
-      });
-
-    }, 50);
-  }
-};
-
-
-    return [loadCSVTrial, profileTrial];
-  }).flat();
-
-  const end = {
-    type: jsPsychHtmlButtonResponse,
-    stimulus: `
-    <div class="fade-container"> 
-    <h2>Vielen Dank für deine Teilnahme!</h2>
-    <p>Wir haben deine Bewertungen gespeichert. Du kannst das Fenster nun schließen.</p>
-    </div>
-    `
-    ,
-    choices: ["Schließen"],
-    css_classes: ['id-panel'],
-    on_start: function(trial) {
     // fade in after content is added to DOM
     setTimeout(() => {
       const container = document.querySelector('.fade-container');
       if(container) container.classList.add('visible');
     }, 10);
-    },
-    on_finish: function() {
-        window.close();
-      }
+  },
+  on_finish: function(data) {
+    // fade out
+    const container = document.querySelector('.fade-container');
+    if(container) container.classList.remove('visible');
+
+    // decide if user wants to redo profile
+    redoProfilePic = data.response === 1; // true → repeat if edit
+  }
+};
+
+    // --- Updated profile loop ---
+  const profile_loop = {
+    timeline: [
+      profile_pic_trial,
+      question_instructions,
+      q1_trial,
+      q2_trial,
+      q3_trial,
+      q4_trial,
+      q5_trial,
+      find_image_trial,
+      profile_preview
+    ],
+    loop_function: function() {
+      return redoProfilePic; // true → repeat if user wants to edit
+    }
   };
 
-  jsPsych.run([id_timeline ,instructions, ...profileTimeline, end]);
+  // --- Timeline ---
+  var timeline = [];
+  timeline.push(id_timeline);
+  timeline.push(welcome);
+  timeline.push(profile_loop); // loop for editing profile
+  timeline.push(end);
+
+  // --- Start experiment ---
+  jsPsych.run(timeline);
 }
 </script>
 </html>
-

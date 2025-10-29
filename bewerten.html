@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Profil Bewerten</title>
+  <script src="jspsych-7.1.2/dist/jspsych.js"></script>
+  <script src="jspsych-7.1.2/dist/plugin-html-button-response.js"></script>
+  <script src="jspsych-7.1.2/dist/plugin-html-keyboard-response.js"></script>
+  <script src="jspsych-7.1.2/dist/plugin-survey-text.js"></script>
+  <link href="jspsych-7.1.2/dist/jspsych.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+  <link href="jspsych-7.1.2/dist/jspsych.css" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .eval-img {
+      width: 100px;
+      cursor: pointer;
+      margin: 0 20px;
+      transition: transform 0.2s ease, filter 0.2s ease, opacity 0.2s ease;
+    }
+
+    .eval-img:hover {
+      transform: scale(1.1);
+    }
+
+    .eval-disabled {
+      cursor: default;
+      opacity: 0.5;
+      transform: scale(0.9);
+      pointer-events: none;
+    }
+
+    .eval-selected {
+      transform: scale(1.2);
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body>
+  <script src="question_strings.js"></script>
+</body>
+
+<script>
+const jsPsych = initJsPsych();
+let currentSurveyData = {};
+let currentImagePath = "";
+
+// used to log in
+let validIDs = [];
+
+// used to load profiles
+let valid_profile_ids = ["00001",
+  "00002",
+  "00003",
+  "00004",
+  "00005",]
+;
+let selectedIDs = [];
+
+// --- Load IDs first ---
+fetch('ids.json')
+  .then(response => response.json())
+  .then(data => {
+    validIDs = data;
+    pickRandomIDs(5);
+    startExperiment();
+  })
+  .catch(err => {
+    alert("Konnte die ID-Datenbank nicht laden.");
+    console.error(err);
+  });
+
+// --- Pick n unique random IDs ---
+function pickRandomIDs(n) {
+  const shuffled = [...valid_profile_ids].sort(() => 0.5 - Math.random());
+  selectedIDs = shuffled.slice(0, n);
+}
+
+// --- CSV parsing ---
+function parseCSVLine(line) {
+  const regex = /(?:\"([^\"]*)\")|([^,]+)/g;
+  const result = [];
+  let match;
+  while ((match = regex.exec(line)) !== null) {
+      result.push(match[1] !== undefined ? match[1] : match[2]);
+  }
+  return result;
+}
+
+function loadCSVData(id) {
+  const filePath = `db/${id}.csv`;
+  return fetch(filePath)
+      .then(response => {
+          if (!response.ok) throw new Error("CSV file not found");
+          return response.text();
+      })
+      .then(csvText => {
+          const rows = csvText.trim().split("\n");
+          const headers = parseCSVLine(rows[0]);
+          const values = parseCSVLine(rows[1]);
+          const data = {};
+          headers.forEach((header, i) => { data[header] = values[i]; });
+          return data;
+      });
+}
+
+// --- Image finder ---
+async function findExistingImage(id) {
+  const extensions = ['png', 'jpg', 'jpeg', 'bmp', 'webp'];
+  for (const ext of extensions) {
+    const path = `profile_pics/${id}.${ext}`;
+    try {
+      const res = await fetch(path, { method: 'HEAD' });
+      if (res.ok) return path;
+    } catch (e) {}
+  }
+  return "profile_pics/default.png";
+}
+
+function startExperiment() {
+
+  // --- Add logo to the page ---
+  const logo = document.createElement('img');
+  logo.src = 'zi.png';  // make sure this file is in the same folder as your HTML
+  logo.className = 'top-logo';
+  document.body.prepend(logo);  // adds logo at the top of body
+  
+  // --- ID input ---
+  const id_input = {
+    type: jsPsychSurveyText,
+    questions: [{ 
+      prompt: "Bitte gib deine Teilnehmer-ID ein (5 Zeichen):", 
+      rows: 1, 
+      columns: 15, 
+      required: true, 
+      name: "participant_id" 
+    }],
+    button_label: "Weiter",
+    css_classes: ['id-panel'],
+    on_start: function() {
+      const wrapper = document.querySelector('.jspsych-content-wrapper');
+
+      // Add logo if not already added
+      if (!wrapper.querySelector('.top-logo')) {
+        const logo = document.createElement('img');
+        logo.src = 'zi.png';  // must be in same folder
+        logo.className = 'top-logo';
+        wrapper.prepend(logo);
+      }
+
+      // Add footnote if not already added
+      if (!wrapper.querySelector('.footnote')) {
+        const footnote = document.createElement('div');
+        footnote.className = 'footnote';
+        footnote.innerText = '© 2025 ZI Mannheim';
+        wrapper.appendChild(footnote);
+      }
+    },
+    on_finish: function(data) {
+      const id = jsPsych.data.getLastTrialData().trials[0].response.participant_id.trim();
+      if(!/^[A-Za-z0-9]{5}$/.test(id)) {
+        alert("ID muss genau 5 Zeichen haben.");
+        data.valid_id = false;
+      } else if (!validIDs.includes(id)) {
+        alert("ID nicht gefunden.");
+        data.valid_id = false;
+      } else {
+        data.valid_id = true;
+        jsPsych.data.addProperties({participant_id: id});
+      }
+    }
+  };
+
+  const id_timeline = {
+    timeline: [id_input],
+    loop_function: function(data) { return !data.values()[0].valid_id; }
+  };
+
+  const instructions = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+      <div class="fade-container"> 
+      <h2>Willkommen!</h2>
+      <p>Wir werden dir nun einige Profile zeigen, die von anderen Studienteilnehmern erstellt wurden. Bitte schau dir die Profile sorgfältig an.
+      
+      <p>
+        Klicke anschließend auf den <b>grünen Daumen, der nach oben zeigt,</b> wenn du diese Person magst und glaubst, dass du mit dieser Person im wirklichen Leben befreundet sein könntest. 
+      </p>
+
+      <p>
+        Klicke auf den <b>roten Daumen, der nach unten zeigt,</b> wenn du glaubst, dass diese Person langweilig ist und nicht daran interessiert bist, sie näher kennenzulernen.
+      </p>
+      
+      </div>
+        `,
+    choices: ["Weiter"],
+    css_classes: ['id-panel'],
+    on_start: function(trial) {
+    // fade in after content is added to DOM
+    setTimeout(() => {
+      const container = document.querySelector('.fade-container');
+      if(container) container.classList.add('visible');
+    }, 10);
+    },
+    on_finish: function() {
+    // fade out before next trial
+    const container = document.querySelector('.fade-container');
+    if(container) container.classList.remove('visible');
+    }
+  };
+
+  let profil_bewertungen = {
+    bew1: "",
+    bew2: "",
+    bew3: "",
+    bew4: "",
+    bew5: "",
+  }
+
+  const profileTimeline = selectedIDs.map(id => {
+    const loadCSVTrial = {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: "Bitte warten, während die Profildaten geladen werden...",
+      choices: "NO_KEYS",
+      trial_duration: null,
+      on_start: async function(trial) {
+        try {
+          currentSurveyData = await loadCSVData(id);
+          currentImagePath = await findExistingImage(id);
+        } catch(err) {
+          console.error(err);
+          currentSurveyData = { Q1:"Fehler", Q2:"Fehler", Q3:"Fehler", Q4:"Fehler", Q5:"Fehler" };
+          currentImagePath = "profile_pics/default.png";
+        }
+        jsPsych.finishTrial();
+      }
+    };
+
+    const profileTrial = {
+  type: jsPsychHtmlKeyboardResponse,
+  stimulus: function() {
+    return `
+      <div class="fade-container"> 
+        <!-- Outer flex container -->
+        <div style="
+          display: flex; 
+          justify-content: center; 
+          align-items: center; 
+          margin-top: 0px; 
+          gap: 40px;
+        ">
+
+          <!-- Left panel -->
+          <div class="profile" style="max-width: 800px;">
+            <div class="profile-pic-wrapper">
+              <div class="profile-pic-ring">
+                <img 
+                  src="${currentImagePath}?t=${Date.now()}" 
+                  alt="Profile picture"
+                  class="profile-pic"
+                >
+              </div>
+            </div>
+
+            <div class="qa-container">
+              <div class="qa-row"><span class="qa-label"><b>${q1_string}</b></span><span class="qa-answer">${currentSurveyData.Q1}</span></div>
+              <div class="qa-row"><span class="qa-label"><b>${q2_string}</b></span><span class="qa-answer">${currentSurveyData.Q2}</span></div>
+              <div class="qa-row"><span class="qa-label"><b>${q3_string}</b></span><span class="qa-answer">${currentSurveyData.Q3}</span></div>
+              <div class="qa-row"><span class="qa-label"><b>${q4_string}</b></span><span class="qa-answer">${currentSurveyData.Q4}</span></div>
+              <div class="qa-row"><span class="qa-label"><b>${q5_string}</b></span><span class="qa-answer">${currentSurveyData.Q5}</span></div>
+            </div>
+          </div>
+
+          <!-- Right column -->
+          <div style="
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+          ">
+            <div style="
+              display: flex; 
+              flex-direction: column; 
+              justify-content: center; 
+              align-items: center;
+              gap: 30px;
+            ">
+              <img src="dep_img/like.png" id="like-btn" class="eval-img">
+              <img src="dep_img/dislike.png" id="dislike-btn" class="eval-img">
+            </div>
+          </div>
+
+        </div>
+      </div>
+    `;
+  },
+  choices: [],
+  trial_duration: null,
+  response_ends_trial: false,
+  on_start: function(trial) {
+    setTimeout(() => {
+      const likeBtn = document.getElementById("like-btn");
+      const dislikeBtn = document.getElementById("dislike-btn");
+
+      // fade in after content is added to DOM
+      setTimeout(() => {
+        const container = document.querySelector('.fade-container');
+        if(container) container.classList.add('visible');
+      }, 10);
+
+      likeBtn.addEventListener("click", () => {
+        likeBtn.classList.add("eval-selected");
+        dislikeBtn.classList.add("eval-disabled");
+
+        const evalData = {
+          participant_id: jsPsych.data.get().values()[0].participant_id,
+          profileID: id,
+          evaluation: "Like"
+        };
+
+        fetch('save_eval.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams(evalData)
+        })
+        .then(res => res.text())
+        .then(console.log)
+        .catch(console.error);
+
+        jsPsych.data.addProperties(evalData);
+        setTimeout(() => jsPsych.finishTrial(), 2000);
+      });
+
+      dislikeBtn.addEventListener("click", () => {
+        dislikeBtn.classList.add("eval-selected");
+        likeBtn.classList.add("eval-disabled");
+
+        const evalData = {
+          participant_id: jsPsych.data.get().values()[0].participant_id,
+          profileID: id,
+          evaluation: "Dislike"
+        };
+
+        fetch('save_eval.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams(evalData)
+        })
+        .then(res => res.text())
+        .then(console.log)
+        .catch(console.error);
+
+        jsPsych.data.addProperties(evalData);
+        setTimeout(() => jsPsych.finishTrial(), 2000);
+      });
+
+    }, 50);
+  }
+};
+
+
+    return [loadCSVTrial, profileTrial];
+  }).flat();
+
+  const end = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+    <div class="fade-container"> 
+    <h2>Vielen Dank für deine Teilnahme!</h2>
+    <p>Wir haben deine Bewertungen gespeichert. Du kannst das Fenster nun schließen.</p>
+    </div>
+    `
+    ,
+    choices: ["Schließen"],
+    css_classes: ['id-panel'],
+    on_start: function(trial) {
+    // fade in after content is added to DOM
+    setTimeout(() => {
+      const container = document.querySelector('.fade-container');
+      if(container) container.classList.add('visible');
+    }, 10);
+    },
+    on_finish: function() {
+        window.close();
+      }
+  };
+
+  jsPsych.run([id_timeline ,instructions, ...profileTimeline, end]);
+}
+</script>
+</html>
+
